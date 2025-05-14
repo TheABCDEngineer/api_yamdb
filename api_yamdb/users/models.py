@@ -8,7 +8,7 @@ from django.db import models
 
 
 class User(AbstractUser):
-
+    """Модель User."""
     ADMIN = 'admin'
     MODERATOR = 'moderator'
     USER = 'user'
@@ -57,5 +57,9 @@ class User(AbstractUser):
         verbose_name='Роль пользователя'
     )
 
+    is_moder = models.BooleanField(default=False)
+
+    is_admin = models.BooleanField(default=False)
+    
     def __str__(self):
         return self.username
