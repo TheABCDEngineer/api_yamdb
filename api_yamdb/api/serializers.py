@@ -6,12 +6,6 @@ from rest_framework.exceptions import ValidationError
 from .models import Category, Genre, Title
 
 
-class CsvUploadSerializer(serializers.Serializer):
-    """Сериализатор для загрузки CSV."""
-
-    file = serializers.FileField()
-
-
 class CategorySerializer(serializers.ModelSerializer):
     """Сериализатор для категорий."""
 
@@ -33,9 +27,8 @@ class GenreSerializer(serializers.ModelSerializer):
 
 class TitleSerializer(serializers.ModelSerializer):
     """Сериализатор для произведений."""
-
-    genre = serializers.StringRelatedField()
-    category = serializers.StringRelatedField()
+    genre = serializers.PrimaryKeyRelatedField(queryset=Genre.objects.all())
+    category = serializers.PrimaryKeyRelatedField(queryset=Category.objects.all())
 
     def validate_year(self, value):
         """Проверка даты создания произведения."""
