@@ -15,8 +15,8 @@ class CsvUploadSerializer(serializers.Serializer):
 class CategorySerializer(serializers.ModelSerializer):
     """Сериализатор для категорий."""
 
-    name = serializers.TextField(max_length=256)
-    slug = serializers.SlugField(max_length=50, unique=True)
+    name = serializers.CharField(max_length=256)
+    slug = serializers.SlugField(max_length=50)
 
     class Meta:
         model = Category
