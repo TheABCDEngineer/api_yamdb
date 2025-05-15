@@ -8,10 +8,6 @@ api_v1_router.register('titles', TitlePost, basename='titles')
 api_v1_router.register('genres', ApiGenre, basename='genres')
 api_v1_router.register('categories', ApiCategory, basename='categories')
 
-api_v1_urlpatterns = [
-    path('', include(api_v1_router.urls)),
-]
-
 urlpatterns = [
-    path('v1/', include(api_v1_urlpatterns)),
+    path('v1/', include(api_v1_router.urls)),
 ]

@@ -9,9 +9,6 @@ from .models import Category, Genre, Title
 class CategorySerializer(serializers.ModelSerializer):
     """Сериализатор для категорий."""
 
-    name = serializers.CharField(max_length=256)
-    slug = serializers.SlugField(max_length=50)
-
     class Meta:
         model = Category
         fields = ('name', 'slug')
@@ -27,8 +24,8 @@ class GenreSerializer(serializers.ModelSerializer):
 
 class TitleSerializer(serializers.ModelSerializer):
     """Сериализатор для произведений."""
-    genre = serializers.PrimaryKeyRelatedField(queryset=Genre.objects.all())
-    category = serializers.PrimaryKeyRelatedField(queryset=Category.objects.all())
+    genre = GenreSerializer(many=True, read_only=True)
+    category = CategorySerializer(read_only=True)
 
     def validate_year(self, value):
         """Проверка даты создания произведения."""
