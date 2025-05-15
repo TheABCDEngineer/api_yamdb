@@ -1,7 +1,7 @@
 from rest_framework import permissions
 
 
-class IsAdmin(permissions.BasePermission):
+class AdminOnly(permissions.BasePermission):
     """Кастомная проверка для вьюсетов.
 
     Только администратор может изменять или удалять контент.

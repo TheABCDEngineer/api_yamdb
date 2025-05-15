@@ -5,13 +5,15 @@ from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.core.mail import send_mail
 from rest_framework import status, exceptions, viewsets
+from rest_framework.decorators import action
 from rest_framework.views import APIView
 from rest_framework.response import Response
+from rest_framework.permissions import IsAuthenticated
 from rest_framework_simplejwt.tokens import AccessToken
 
 
 from .serializers import SignUpSerializer, UserSerializer
-from .permissions import IsAdmin
+from .permissions import AdminOnly
 
 User = get_user_model()
 
@@ -105,11 +107,26 @@ class TokenObtainView(APIView):
         return Response({
             'token': str(token),
         }, status=status.HTTP_200_OK)
-    
+
 
 class UserViewSet(viewsets.ModelViewSet):
     """Вью для работы с пользователями."""
-    
+
     queryset = User.objects.all()
     serializer_class = UserSerializer
-    permission_classes = [IsAdmin]
+    permission_classes = [AdminOnly]
+    lookup_field = 'username'
+
+    @action(detail=False, methods=['get', 'patch'],
+            permission_classes=[IsAuthenticated])
+    def me(self, request):
+        user = request.user
+        if request.method == 'GET':
+            serializer = self.get_serializer(user)
+            return Response(serializer.data, status=status.HTTP_200_OK)
+        if request.method == 'PATCH':
+            serializer = self.get_serializer(user, data=request.data,
+                                             partial=True)
+            serializer.is_valid(raise_exception=True)
+            serializer.save()
+            return Response(serializer.data, status=status.HTTP_200_OK)
