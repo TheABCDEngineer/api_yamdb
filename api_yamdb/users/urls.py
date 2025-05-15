@@ -1,4 +1,11 @@
-from django.urls import path, include
+
+# urls.py
+from django.urls import path
+from .views import SignUpView
+
+urlpatterns = [
+    path('api/v1/auth/signup/', SignUpView.as_view(), name='signup'),
+]
 
 # urlpatterns = [
 #     path(

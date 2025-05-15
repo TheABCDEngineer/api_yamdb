@@ -2,6 +2,9 @@ from django.contrib.auth.models import AbstractUser
 from django.core.validators import RegexValidator
 from django.db import models
 
+from random import choice
+import string
+
 # https://stackoverflow.com/questions/18676156/how-to-properly-use-the-choices-field-option-in-django
 # Required. 150 characters or fewer. Letters, digits and @/./+/-/_ only.
 # https://stackoverflow.com/questions/36409257/required-30-characters-or-fewer-letters-digits-and-only
@@ -18,7 +21,7 @@ class User(AbstractUser):
         (USER, 'Обычный пользователь'),
     )
 
-    username_validator = RegexValidator(  # TODO
+    username_validator = RegexValidator(  # TODO унаследоваться от User и не выебываться вместо AbstractUser
         regex=r'^[\w.@+-]+$',
         message=('Имя пользователя должно содержать только'
                  ' буквы, цифры и символы @/./+/-/_'),
@@ -61,5 +64,24 @@ class User(AbstractUser):
 
     is_admin = models.BooleanField(default=False)
     
+    confirmation_code = models.CharField(max_length=100, blank=True, null=True)
+
     def __str__(self):
         return self.username
+    
+
+# from django.conf import settings
+# from django.core.mail import send_mail
+# from django.db import models
+# from random import choice
+# import string
+
+
+# def generate_confirmation_code():
+#     return ''.join(choice(string.ascii_uppercase + string.digits) for x in range(6))
+
+
+# class ActivationCode(models.Model):
+#     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT)
+#     code = models.CharField(max_length=6, default=generate_confirmation_code)
+
