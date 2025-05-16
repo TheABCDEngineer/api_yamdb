@@ -3,6 +3,50 @@ from django.core.validators import RegexValidator
 from django.db import models
 
 
+class Category(models.Model):
+    name = models.TextField(max_length=256)
+    slug = models.SlugField(max_length=50, unique=True)
+
+    def __str__(self):
+        return self.name
+
+    class Meta:
+        verbose_name = 'Категория'
+        verbose_name_plural = 'Категории'
+
+
+class Genre(models.Model):
+    name = models.TextField(max_length=256)
+    slug = models.SlugField(max_length=50, unique=True)
+
+    def __str__(self):
+        return self.name
+
+    class Meta:
+        verbose_name = 'Жанр'
+        verbose_name_plural = 'Жанры'
+
+
+class Title(models.Model):
+    name = models.TextField(max_length=256)
+    year = models.IntegerField()
+    description = models.TextField(blank=True)
+    genre = models.ManyToManyField(Genre, related_name='titles')
+    category = models.ForeignKey(
+        Category,
+        on_delete=models.CASCADE,
+        related_name="titles",
+        blank=False,
+        null=True,
+    )
+
+    def __str__(self):
+        return self.name
+
+    class Meta:
+        verbose_name = 'Произведение'
+        verbose_name_plural = 'Произведения'
+
 # https://stackoverflow.com/questions/18676156/how-to-properly-use-the-choices-field-option-in-django
 # Required. 150 characters or fewer. Letters, digits and @/./+/-/_ only.
 # https://stackoverflow.com/questions/36409257/required-30-characters-or-fewer-letters-digits-and-only
