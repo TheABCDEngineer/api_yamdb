@@ -1,14 +1,16 @@
 from django.contrib.auth import get_user_model
+from django.shortcuts import get_object_or_404
 from rest_framework import serializers
-from rest_framework.exceptions import ValidationError, AuthenticationFailed
-from rest_framework_simplejwt.tokens import AccessToken
+from rest_framework.exceptions import ValidationError
 from rest_framework.validators import UniqueValidator
+
 
 User = get_user_model()
 
 
-class UserSerializer(serializers.ModelSerializer):
+class SignUpSerializer(serializers.ModelSerializer):
     """Сериализатор для пользователя."""
+
     username = serializers.RegexField(
         regex=r'^[\w.@+-]+$',
         max_length=150,
@@ -20,13 +22,22 @@ class UserSerializer(serializers.ModelSerializer):
         max_length=254,
         required=True,
         validators=[UniqueValidator(queryset=User.objects.all(),
-                                    message='Эта эл.почта уже используется.')]
+                                    message='Эта электронная почта '
+                                    'уже используется.')]
     )
 
     def validate_username(self, value):
         if value == 'me':
-            raise ValidationError('Использовать имя "me" запрещено')
+            raise ValidationError('Использовать имя me запрещено.')
         return value
+
+    class Meta:
+        model = User
+        fields = ['username', 'email']
+
+
+class UserSerializer(SignUpSerializer):
+    """Сериализатор для регистрации."""
 
     class Meta:
         model = User
@@ -35,31 +46,15 @@ class UserSerializer(serializers.ModelSerializer):
             'last_name', 'bio', 'role'
         ]
 
-class SignUpSerializer(UserSerializer):
-    """Сериализатор для регистрации."""
-
-    username = serializers.RegexField(
-        regex=r'^[\w.@+-]+$',
-        max_length=150,
-        required=True,
-    )
-    email = serializers.EmailField(
-        max_length=254,
-        required=True,
-    )
-
-    class Meta:
-        model = User
-        fields = ['username', 'email']
-
-    class Meta:
-        model = User
-        fields = ['username', 'email']
-
 
 class TokenSerializer(serializers.Serializer):
     """Сериализатор для выдачи токена."""
+    username = serializers.CharField(required=True)
+    confirmation_code = serializers.CharField(required=True)
 
-    class Meta:
-        model = User
-        fields = ['username', 'confirmation_code']
+    def validate(self, data):
+        user = get_object_or_404(User, username=data.get('username'))
+        data['user'] = user
+        if user.confirmation_code == data.get('confirmation_code'):
+            return data
+        raise serializers.ValidationError('Неверный код подтверждения.')

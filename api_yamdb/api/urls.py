@@ -14,5 +14,4 @@ urlpatterns = [
         name='token_obtain_pair'
     ),
     path('', include(router_v1.urls)),
-    
 ]
