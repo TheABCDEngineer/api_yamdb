@@ -1,6 +1,17 @@
 import datetime
+
+from django.contrib.auth import get_user_model
+from django.shortcuts import get_object_or_404
 from rest_framework import serializers
+from rest_framework.exceptions import ValidationError
+from rest_framework.validators import UniqueValidator
+
+from titles.models import Comment, Review, Title
+
 from .models import Category, Genre, Title
+
+User = get_user_model()
+
 
 class CategorySerializer(serializers.ModelSerializer):
     class Meta:
@@ -50,3 +61,136 @@ class TitleSerializer(serializers.ModelSerializer):
             genre_obj, _ = Genre.objects.get_or_create(**genre_data)
             instance.genre.add(genre_obj)
         return instance
+
+      
+class CommentSerializer(serializers.ModelSerializer):
+    author = serializers.SlugRelatedField(
+        slug_field='username',
+        read_only=True
+    )
+
+    class Meta:
+        model = Comment
+        fields = (
+            'id',
+            'text',
+            'author',
+            'pub_date'
+        )
+        read_only_fields = (
+            'id',
+            'author',
+            'review'
+            'pub_date'
+        )
+
+
+class ReviewSerializer(serializers.ModelSerializer):
+    author = serializers.SlugRelatedField(
+        slug_field='username',
+        read_only=True
+    )
+
+    def validate(self, attrs):
+        author = self.context['request'].user
+        title = get_object_or_404(
+            Title,
+            pk=self.context['kwargs']['title_id']
+        )
+        try:
+            _ = author.reviews.get(title=title)
+            raise serializers.ValidationError(
+                'Нельзя оставить более одного отзыва на произведение'
+            )
+        except Review.DoesNotExist:
+            return super().validate(attrs)
+
+    class Meta:
+        model = Review
+        fields = (
+            'id',
+            'text',
+            'author',
+            'score'
+            'pub_date'
+        )
+        read_only_fields = (
+            'id',
+            'author',
+            'title'
+            'pub_date'
+        )
+
+
+class Title2Serializer(serializers.ModelSerializer):
+    rating = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Title
+        fields = 'name, rating'
+        read_only_fields = 'rating'
+
+    def get_rating(self, obj):
+        reviews = obj.reviews.all()
+        if reviews.count() == 0:
+            return 0
+
+        summary_score = 0
+        for review in reviews:
+            summary_score += review.score
+
+        return round(
+            summary_score / reviews.count()
+        )
+
+
+class SignUpSerializer(serializers.ModelSerializer):
+    """Сериализатор для пользователя."""
+
+    username = serializers.RegexField(
+        regex=r'^[\w.@+-]+$',
+        max_length=150,
+        required=True,
+        validators=[UniqueValidator(queryset=User.objects.all(),
+                                    message='Это имя уже используется.')]
+    )
+    email = serializers.EmailField(
+        max_length=254,
+        required=True,
+        validators=[UniqueValidator(queryset=User.objects.all(),
+                                    message='Эта электронная почта '
+                                    'уже используется.')]
+    )
+
+    def validate_username(self, value):
+        if value == 'me':
+            raise ValidationError('Использовать имя me запрещено.')
+        return value
+
+    class Meta:
+        model = User
+        fields = ['username', 'email']
+
+
+class UserSerializer(SignUpSerializer):
+    """Сериализатор для регистрации."""
+
+    class Meta:
+        model = User
+        fields = [
+            'username', 'email', 'first_name',
+            'last_name', 'bio', 'role'
+        ]
+
+
+class TokenSerializer(serializers.Serializer):
+    """Сериализатор для выдачи токена."""
+    username = serializers.CharField(required=True)
+    confirmation_code = serializers.CharField(required=True)
+
+    def validate(self, data):
+        user = get_object_or_404(User, username=data.get('username'))
+        data['user'] = user
+        if user.confirmation_code == data.get('confirmation_code'):
+            return data
+        raise serializers.ValidationError('Неверный код подтверждения.')
