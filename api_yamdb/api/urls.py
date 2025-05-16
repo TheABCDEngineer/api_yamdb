@@ -1,10 +1,15 @@
 from django.urls import include, path
-from rest_framework.routers import SimpleRouter
+from rest_framework.routers import DefaultRouter
 
 from . import views
+from .views import SignUpView, TokenObtainView, UserViewSet
 
-
-router_v1 = SimpleRouter()
+router_v1 = DefaultRouter()
+router_v1.register(
+  prefix='users',
+  viewset=UserViewSet, 
+  basename='user'
+)
 router_v1.register(
     prefix='titles',
     viewset=views.TitleViewSet,
@@ -22,5 +27,11 @@ router_v1.register(
 )
 
 urlpatterns = [
+    path('v1/auth/signup/', SignUpView.as_view(), name='signup'),
+    path(
+        'v1/auth/token/',
+        TokenObtainView.as_view(),
+        name='token_obtain_pair'
+    ),
     path('v1/', include(router_v1.urls)),
 ]
