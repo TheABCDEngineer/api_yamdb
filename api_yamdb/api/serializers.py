@@ -49,6 +49,7 @@ class UserSerializer(SignUpSerializer):
 
 class TokenSerializer(serializers.Serializer):
     """Сериализатор для выдачи токена."""
+
     username = serializers.CharField(required=True)
     confirmation_code = serializers.CharField(required=True)
 
