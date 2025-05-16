@@ -9,19 +9,17 @@ from rest_framework.decorators import action
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.pagination import LimitOffsetPagination
-from rest_framework.permissions import IsAuthenticated, IsAuthenticatedOrReadOnly
+from rest_framework.permissions import (
+    IsAuthenticated, IsAuthenticatedOrReadOnly
+)
 from rest_framework_simplejwt.tokens import AccessToken
-
 from .permissions import AdminOnly, IsAuthorOrReadOnly
 from .serializers import (
-    CommentSerializer, ReviewSerializer, SignUpSerializer,
-    TitleSerializer, TokenSerializer, UserSerializer,
-    CategorySerializer,
-    GenreSerializer,
-    TitleSerializer
+    CategorySerializer, CommentSerializer, GenreSerializer,
+    ReviewSerializer, SignUpSerializer, TitleSerializer,
+    TokenSerializer, UserSerializer,
 )
-from titles.models import Review, Title
-from .models import Category, Genre, Title
+from titles.models import Category, Genre, Review, Title
 
 User = get_user_model()
 
@@ -77,12 +75,14 @@ class TitleViewSet(viewsets.ModelViewSet):
 
     pagination_class = LimitOffsetPagination
 
-class ApiGenre(viewsets.ReadOnlyModelViewSet):
+
+class GenreViewSet(viewsets.ReadOnlyModelViewSet):
     queryset = Genre.objects.all()
     serializer_class = GenreSerializer
     lookup_field = 'slug'
 
-class ApiCategory(viewsets.ReadOnlyModelViewSet):
+
+class CategoryViewSet(viewsets.ReadOnlyModelViewSet):
     queryset = Category.objects.all()
     serializer_class = CategorySerializer
     lookup_field = 'slug'

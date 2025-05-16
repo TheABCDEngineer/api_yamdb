@@ -6,9 +6,7 @@ from rest_framework import serializers
 from rest_framework.exceptions import ValidationError
 from rest_framework.validators import UniqueValidator
 
-from titles.models import Comment, Review, Title
-
-from .models import Category, Genre, Title
+from titles.models import Category, Comment, Genre, Review, Title
 
 User = get_user_model()
 
@@ -18,18 +16,26 @@ class CategorySerializer(serializers.ModelSerializer):
         model = Category
         fields = ('name', 'slug')
 
+
 class GenreSerializer(serializers.ModelSerializer):
     class Meta:
         model = Genre
         fields = ('name', 'slug')
 
+
 class TitleSerializer(serializers.ModelSerializer):
     genre = GenreSerializer(many=True)
     category = CategorySerializer()
+    rating = serializers.SerializerMethodField()
 
     class Meta:
         model = Title
-        fields = ('name', 'year', 'description', 'genre', 'category')
+        fields = (
+            'id', 'name', 'year', 'raiting', 'description', 'genre', 'category'
+        )
+        read_only_fields = (
+            'id', 'rating'
+        )
 
     def validate_year(self, value):
         current_year = datetime.date.today().year
@@ -62,7 +68,20 @@ class TitleSerializer(serializers.ModelSerializer):
             instance.genre.add(genre_obj)
         return instance
 
-      
+    def get_rating(self, obj):
+        reviews = obj.reviews.all()
+        if reviews.count() == 0:
+            return 0
+
+        summary_score = 0
+        for review in reviews:
+            summary_score += review.score
+
+        return round(
+            summary_score / reviews.count()
+        )
+
+
 class CommentSerializer(serializers.ModelSerializer):
     author = serializers.SlugRelatedField(
         slug_field='username',
@@ -119,28 +138,6 @@ class ReviewSerializer(serializers.ModelSerializer):
             'author',
             'title'
             'pub_date'
-        )
-
-
-class Title2Serializer(serializers.ModelSerializer):
-    rating = serializers.SerializerMethodField()
-
-    class Meta:
-        model = Title
-        fields = 'name, rating'
-        read_only_fields = 'rating'
-
-    def get_rating(self, obj):
-        reviews = obj.reviews.all()
-        if reviews.count() == 0:
-            return 0
-
-        summary_score = 0
-        for review in reviews:
-            summary_score += review.score
-
-        return round(
-            summary_score / reviews.count()
         )
 
 

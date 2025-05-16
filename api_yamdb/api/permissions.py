@@ -1,6 +1,10 @@
+from django.contrib.auth import get_user_model
 from rest_framework.permissions import BasePermission, SAFE_METHODS
 
-from .models import User
+# from .models import User
+
+User = get_user_model()
+
 
 class IsAuthorOrReadOnly(BasePermission):
     """Разрешает редактирование только автору объекта."""
@@ -11,7 +15,7 @@ class IsAuthorOrReadOnly(BasePermission):
             or obj.author == request.user
         )
 
-      
+
 class AdminOnly(BasePermission):
     """Кастомная проверка для вьюсетов.
 
