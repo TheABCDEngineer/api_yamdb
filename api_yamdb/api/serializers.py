@@ -140,9 +140,26 @@ class ReviewSerializer(serializers.ModelSerializer):
             'pub_date'
         )
 
+class UsernameSreializer(serializers.Serializer):
+    username = serializers.RegexField(
+        regex=r'^[\w.@+-]+$',
+        max_length=150,
+        required=True,
+    )
 
-class SignUpSerializer(serializers.ModelSerializer):
-    """Сериализатор для пользователя."""
+    def validate_username(self, value):
+        if value == 'me':
+            raise ValidationError('Использовать имя me запрещено.')
+        return value
+
+
+class SignUpSerializer(UsernameSreializer):
+    email = serializers.EmailField(required=True, max_length=254)
+
+
+
+class UserSerializer(serializers.ModelSerializer):
+    """Сериализатор для регистрации."""
 
     username = serializers.RegexField(
         regex=r'^[\w.@+-]+$',
@@ -163,14 +180,20 @@ class SignUpSerializer(serializers.ModelSerializer):
         if value == 'me':
             raise ValidationError('Использовать имя me запрещено.')
         return value
+    
 
-    class Meta:
-        model = User
-        fields = ['username', 'email']
+    
+    # def validate(self, data):
+    #     username = data.get('username')
+    #     email = data.get('email')
 
-
-class UserSerializer(SignUpSerializer):
-    """Сериализатор для регистрации."""
+    #     if User.objects.filter(username=username).exists():
+    #         user = User.objects.get(username=username)
+    #         if user.email != email:
+    #             raise ValidationError('Этот email занят.')
+            
+    #     elif User.objects.filter(email=email).exists():
+    #         raise ValidationError('Этот email занят.')
 
     class Meta:
         model = User
@@ -178,6 +201,21 @@ class UserSerializer(SignUpSerializer):
             'username', 'email', 'first_name',
             'last_name', 'bio', 'role'
         ]
+
+
+
+# class UserSerializer(SignUpSerializer2):
+#     """Сериализатор для пользователя."""
+
+#     class Meta:
+#         model = User
+#         fields = [
+#             'username', 'email', 'first_name',
+#             'last_name', 'bio', 'role'
+#         ]
+
+class UserMeSerializer(UserSerializer):
+    role = serializers.CharField(read_only=True)
 
 
 class TokenSerializer(serializers.Serializer):

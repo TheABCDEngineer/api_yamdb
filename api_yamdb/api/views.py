@@ -3,8 +3,9 @@ import secrets
 from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.core.mail import send_mail
+from django.db.utils import IntegrityError
 from django.shortcuts import get_object_or_404
-from rest_framework import status, viewsets
+from rest_framework import status, viewsets, filters
 from rest_framework.decorators import action
 from rest_framework.views import APIView
 from rest_framework.response import Response
@@ -17,7 +18,7 @@ from .permissions import AdminOnly, IsAuthorOrReadOnly
 from .serializers import (
     CategorySerializer, CommentSerializer, GenreSerializer,
     ReviewSerializer, SignUpSerializer, TitleSerializer,
-    TokenSerializer, UserSerializer,
+    TokenSerializer, UserSerializer, UserMeSerializer
 )
 from titles.models import Category, Genre, Review, Title
 
@@ -95,38 +96,58 @@ class SignUpView(APIView):
     Права доступа: Доступно без токена.
     """
 
+    permission_classes = []
+
     def post(self, request):
-        serializer = SignUpSerializer(data=request.data)
-        if not serializer.is_valid():
-            return Response(
-                serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
-        username = serializer.validated_data.get('username')
-        email = serializer.validated_data.get('email')
-
-        user_exists = User.objects.filter(
-            username=username, email=email).exists()
-
-        if user_exists:
-            user = User.objects.get(username=username)
+        serializer = SignUpSerializer(data=request.data) 
+        serializer.is_valid(raise_exception=True)
+        try:
+            user, created = User.objects.get_or_create(
+                username=serializer.validated_data.get('username'),
+                email=serializer.validated_data.get('email')
+            )
+            user.confirmation_code = secrets.token_urlsafe(16)
+            user.save()
             self.send_confirmation_code(
                 user.email, user.confirmation_code, user.username)
+            return Response(serializer.data, status=status.HTTP_200_OK)
+        except IntegrityError():
             return Response(
-                {'username': username, 'email': email},
-                status=status.HTTP_200_OK
-            )
+                data={'error:': 'Username или Email уже используются.'},
+                status=status.HTTP_400_BAD_REQUEST)
 
-        code = secrets.token_urlsafe(16)
+    # def post(self, request):
+    #     serializer = SignUpSerializer(data=request.data)
+    #     if not serializer.is_valid():
+    #         return Response(
+    #             serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-        user = User.objects.create(
-            username=username,
-            email=email,
-            confirmation_code=code
-        )
-        self.send_confirmation_code(email, code, username)
+    #     username = serializer.validated_data.get('username')
+    #     email = serializer.validated_data.get('email')
 
-        return Response({'username': username, 'email': email},
-                        status=status.HTTP_200_OK)
+    #     user_exists = User.objects.filter(
+    #         username=username, email=email).exists()
+
+    #     if user_exists:
+    #         user = User.objects.get(username=username)
+    #         self.send_confirmation_code(
+    #             user.email, user.confirmation_code, user.username)
+    #         return Response(
+    #             {'username': username, 'email': email},
+    #             status=status.HTTP_200_OK
+    #         )
+
+    #     code = secrets.token_urlsafe(16)
+
+    #     user = User.objects.create(
+    #         username=username,
+    #         email=email,
+    #         confirmation_code=code
+    #     )
+    #     self.send_confirmation_code(email, code, username)
+
+    #     return Response({'username': username, 'email': email},
+    #                     status=status.HTTP_200_OK)
 
     def send_confirmation_code(self, email, code, username):
         """Логика отправки письма с confirmation_code."""
@@ -145,6 +166,7 @@ class TokenObtainView(APIView):
 
     Права доступа: Доступно без токена.
     """
+    permission_classes = []
 
     def post(self, request):
         serializer = TokenSerializer(data=request.data)
@@ -162,9 +184,15 @@ class UserViewSet(viewsets.ModelViewSet):
     serializer_class = UserSerializer
     permission_classes = [AdminOnly]
     lookup_field = 'username'
+    http_method_names = ['get', 'post', 'patch', 'delete']
+    pagination_class = LimitOffsetPagination  # ?/////////////////////////////////////////////////////////////////////
+    filter_backends = [filters.SearchFilter]
+    search_fields = ['username']
 
-    @action(detail=False, methods=['get', 'patch'],
-            permission_classes=[IsAuthenticated])
+    @action(detail=False,
+            methods=['get', 'patch'],
+            permission_classes=[IsAuthenticated],
+            serializer_class=UserMeSerializer)
     def me(self, request):
         """Логика для эндпоинта /me/ ."""
         user = request.user

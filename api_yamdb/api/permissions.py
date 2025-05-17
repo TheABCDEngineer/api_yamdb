@@ -22,6 +22,11 @@ class AdminOnly(BasePermission):
     Только администратор может изменять или удалять контент.
     """
 
+    def has_permission(self, request, view):
+        return bool(
+            request.method in SAFE_METHODS or request.user.role == User.ADMIN or request.user.is_superuser
+        )
+
     def has_object_permission(self, request, view, obj):
         return (request.method in SAFE_METHODS
                 or request.user.role == User.ADMIN)
