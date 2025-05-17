@@ -4,7 +4,7 @@ from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.core.mail import send_mail
 from django.shortcuts import get_object_or_404
-from rest_framework import status, viewsets
+from rest_framework import status, viewsets, filters
 from rest_framework.decorators import action
 from rest_framework.views import APIView
 from rest_framework.response import Response
@@ -17,7 +17,7 @@ from .permissions import AdminOnly, IsAuthorOrReadOnly
 from .serializers import (
     CategorySerializer, CommentSerializer, GenreSerializer,
     ReviewSerializer, SignUpSerializer, TitleSerializer,
-    TokenSerializer, UserSerializer,
+    TokenSerializer, UserSerializer, UserMeSerializer
 )
 from titles.models import Category, Genre, Review, Title
 
@@ -95,6 +95,8 @@ class SignUpView(APIView):
     Права доступа: Доступно без токена.
     """
 
+    permission_classes = []
+
     def post(self, request):
         serializer = SignUpSerializer(data=request.data)
         if not serializer.is_valid():
@@ -104,19 +106,36 @@ class SignUpView(APIView):
         username = serializer.validated_data.get('username')
         email = serializer.validated_data.get('email')
 
-        user_exists = User.objects.filter(
-            username=username, email=email).exists()
+        if (
+            User.objects.filter(email=email)
+            .exclude(username=username).exists()
+        ):
+            return Response(
+                {'email': 'Этот email уже используется'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
 
-        if user_exists:
+        if (
+            User.objects.filter(username=username)
+            .exclude(email=email).exists()
+        ):
+            return Response(
+                {'email': 'Этот username уже используется'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        code = secrets.token_urlsafe(16)
+
+        if User.objects.filter(username=username, email=email).exists():
             user = User.objects.get(username=username)
+            user.confirmation_code = code
+            user.save()
             self.send_confirmation_code(
                 user.email, user.confirmation_code, user.username)
             return Response(
                 {'username': username, 'email': email},
                 status=status.HTTP_200_OK
             )
-
-        code = secrets.token_urlsafe(16)
 
         user = User.objects.create(
             username=username,
@@ -145,6 +164,7 @@ class TokenObtainView(APIView):
 
     Права доступа: Доступно без токена.
     """
+    permission_classes = []
 
     def post(self, request):
         serializer = TokenSerializer(data=request.data)
@@ -156,15 +176,25 @@ class TokenObtainView(APIView):
 
 
 class UserViewSet(viewsets.ModelViewSet):
-    """Вьюсет для работы с пользователями."""
+    """
+    Вьюсет для работы с пользователями.
+
+    Права доступа: администратор, кроме эндпоинта /me/.
+    """
 
     queryset = User.objects.all()
     serializer_class = UserSerializer
-    permission_classes = [AdminOnly]
+    permission_classes = [AdminOnly, IsAuthenticated]
     lookup_field = 'username'
+    http_method_names = ['get', 'post', 'patch', 'delete']
+    pagination_class = LimitOffsetPagination
+    filter_backends = [filters.SearchFilter]
+    search_fields = ['username']
 
-    @action(detail=False, methods=['get', 'patch'],
-            permission_classes=[IsAuthenticated])
+    @action(detail=False,
+            methods=['get', 'patch'],
+            permission_classes=[IsAuthenticated],
+            serializer_class=UserMeSerializer)
     def me(self, request):
         """Логика для эндпоинта /me/ ."""
         user = request.user
