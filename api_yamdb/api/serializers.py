@@ -140,7 +140,10 @@ class ReviewSerializer(serializers.ModelSerializer):
             'pub_date'
         )
 
+
 class UsernameSreializer(serializers.Serializer):
+    """Сериализатор для username."""
+
     username = serializers.RegexField(
         regex=r'^[\w.@+-]+$',
         max_length=150,
@@ -154,12 +157,12 @@ class UsernameSreializer(serializers.Serializer):
 
 
 class SignUpSerializer(UsernameSreializer):
+    """Сериализатор для логики /signup/."""
     email = serializers.EmailField(required=True, max_length=254)
 
 
-
 class UserSerializer(serializers.ModelSerializer):
-    """Сериализатор для регистрации."""
+    """Сериализатор для логики /users/."""
 
     username = serializers.RegexField(
         regex=r'^[\w.@+-]+$',
@@ -180,20 +183,6 @@ class UserSerializer(serializers.ModelSerializer):
         if value == 'me':
             raise ValidationError('Использовать имя me запрещено.')
         return value
-    
-
-    
-    # def validate(self, data):
-    #     username = data.get('username')
-    #     email = data.get('email')
-
-    #     if User.objects.filter(username=username).exists():
-    #         user = User.objects.get(username=username)
-    #         if user.email != email:
-    #             raise ValidationError('Этот email занят.')
-            
-    #     elif User.objects.filter(email=email).exists():
-    #         raise ValidationError('Этот email занят.')
 
     class Meta:
         model = User
@@ -203,23 +192,15 @@ class UserSerializer(serializers.ModelSerializer):
         ]
 
 
-
-# class UserSerializer(SignUpSerializer2):
-#     """Сериализатор для пользователя."""
-
-#     class Meta:
-#         model = User
-#         fields = [
-#             'username', 'email', 'first_name',
-#             'last_name', 'bio', 'role'
-#         ]
-
 class UserMeSerializer(UserSerializer):
+    """Сериализатор для логики эндпоинта /me/ ."""
+
     role = serializers.CharField(read_only=True)
 
 
 class TokenSerializer(serializers.Serializer):
     """Сериализатор для выдачи токена."""
+
     username = serializers.CharField(required=True)
     confirmation_code = serializers.CharField(required=True)
 
