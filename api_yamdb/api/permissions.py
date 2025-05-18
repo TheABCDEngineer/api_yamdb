@@ -5,34 +5,35 @@ User = get_user_model()
 
 
 class IsAuthorOrReadOnly(BasePermission):
-    """Разрешает редактирование только автору объекта."""
-
     def has_object_permission(self, request, view, obj):
-        if not request.user or not request.user.is_authenticated:
+        if request.method in SAFE_METHODS:
+            return True
+        if not request.user.is_authenticated:
             return False
         return (
-            request.method in SAFE_METHODS
-            or obj.author == request.user
+            obj.author == request.user
+            or request.user.role == User.ADMIN
+            or request.user.role == User.MODERATOR
         )
 
 
 class AdminOnly(BasePermission):
-    """Кастомная проверка для вьюсетов /users/.
-
-    Только администратор или суперюзер может изменять или удалять контент.
-    """
-
     def has_permission(self, request, view):
-        """
-        Вызывается до выборки объекта.
-
-        Позволяет:
-        - Все безопасные методы
-        - Только админам и суперпользователям — небезопасные методы
-        """
-        if not request.user or not request.user.is_authenticated:
+        if not request.user.is_authenticated:
             return False
-        return bool(
+        return (
+            request.user.role == User.ADMIN
+            or request.user.is_superuser
+        )
+
+
+class IsAdminOrReadOnly(BasePermission):
+    def has_permission(self, request, view):
+        if request.method in SAFE_METHODS:
+            return True
+        if not request.user.is_authenticated:
+            return False
+        return (
             request.user.role == User.ADMIN
             or request.user.is_superuser
         )

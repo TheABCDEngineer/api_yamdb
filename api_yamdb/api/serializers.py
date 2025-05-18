@@ -6,7 +6,7 @@ from rest_framework import serializers
 from rest_framework.exceptions import ValidationError
 from rest_framework.validators import UniqueValidator
 
-from titles.models import Category, Comment, Genre, Review, Title
+from titles.models import Category, Comment, Genre, GenreTitle, Review, Title
 
 User = get_user_model()
 
@@ -41,8 +41,8 @@ class GenreSerializer(serializers.ModelSerializer):
 
 
 class TitleSerializer(serializers.ModelSerializer):
-    genre = GenreSerializer(many=True)
-    category = CategorySerializer()
+    genre = GenreSerializer(many=True, read_only=True)
+    category = CategorySerializer(read_only=True)
     rating = serializers.SerializerMethodField()
 
     class Meta:
@@ -51,7 +51,7 @@ class TitleSerializer(serializers.ModelSerializer):
             'id', 'name', 'year', 'rating', 'description', 'genre', 'category'
         )
         read_only_fields = (
-            'id', 'rating'
+            'id', 'rating', 'genre', 'category'
         )
 
     def validate_year(self, value):
@@ -62,27 +62,71 @@ class TitleSerializer(serializers.ModelSerializer):
             )
         return value
 
+    def validate(self, attr):  # noqa: C901
+        if 'genre' not in self.initial_data:
+            raise ValidationError(
+                'Отсутствует обязательный параментр genre'
+            )
+        genre_slugs = self.initial_data.get('genre')
+        if not isinstance(genre_slugs, list):
+            raise ValidationError(
+                'Параментр genre должен быть списком'
+            )
+        if not len(genre_slugs):
+            raise ValidationError(
+                'Параментр genre не должен быть пустым'
+            )
+        try:
+            for genre_slug in genre_slugs:
+                _ = Genre.objects.get(slug=genre_slug)
+        except Genre.DoesNotExist:
+            raise ValidationError(
+                f'Жанра {genre_slug} не существует'
+            )
+
+        if 'category' not in self.initial_data:
+            raise ValidationError(
+                'Отсутствует обязательный параментр category'
+            )
+        category_slug = self.initial_data.get('category')
+        if not isinstance(category_slug, str):
+            raise ValidationError(
+                'Параментр category должен быть строкой'
+            )
+        try:
+            _ = Category.objects.get(slug=category_slug)
+        except Category.DoesNotExist:
+            raise ValidationError(
+                f'Категории {category_slug} не существует'
+            )
+
+        return super().validate(attr)
+
     def create(self, validated_data):
-        genres_data = validated_data.pop('genre')
-        category_data = validated_data.pop('category')
-        category_obj, _ = Category.objects.get_or_create(**category_data)
-        title = Title.objects.create(**validated_data, category=category_obj)
-        for genre_data in genres_data:
-            genre_obj, _ = Genre.objects.get_or_create(**genre_data)
-            title.genre.add(genre_obj)
+        category = Category.objects.get(
+            slug=self.initial_data.get('category')
+        )
+        title = Title.objects.create(**validated_data, category=category)
+
+        genre_slugs = self.initial_data.get('genre')
+        self.__save_genres(title, genre_slugs)
         return title
 
     def update(self, instance, validated_data):
-        genres_data = validated_data.pop('genre')
-        category_data = validated_data.pop('category')
-        category_obj, _ = Category.objects.get_or_create(**category_data)
-        instance.category = category_obj
-        instance.save()
+        category = Category.objects.get(
+            slug=self.initial_data.get('category')
+        )
+        genre_slugs = self.initial_data.get('genre')
+        GenreTitle.objects.filter(title=instance).delete()
 
-        instance.genre.clear()
-        for genre_data in genres_data:
-            genre_obj, _ = Genre.objects.get_or_create(**genre_data)
-            instance.genre.add(genre_obj)
+        instance.name = validated_data.get('name', instance.name)
+        instance.year = validated_data.get('year', instance.year)
+        instance.description = validated_data.get(
+            'description', instance.description
+        )
+        instance.category = category
+        instance.save()
+        self.__save_genres(instance, genre_slugs)
         return instance
 
     def get_rating(self, obj):
@@ -97,6 +141,14 @@ class TitleSerializer(serializers.ModelSerializer):
         return round(
             summary_score / reviews.count()
         )
+
+    def __save_genres(self, title, genre_slugs):
+        for genre_slug in genre_slugs:
+            genre = Genre.objects.get(slug=genre_slug)
+            GenreTitle.objects.create(
+                genre=genre,
+                title=title
+            )
 
 
 class CommentSerializer(serializers.ModelSerializer):
@@ -131,7 +183,7 @@ class ReviewSerializer(serializers.ModelSerializer):
         author = self.context['request'].user
         title = get_object_or_404(
             Title,
-            pk=self.context['kwargs']['title_id']
+            pk=self.context['view'].kwargs['title_id']
         )
         try:
             _ = author.reviews.get(title=title)
@@ -147,13 +199,13 @@ class ReviewSerializer(serializers.ModelSerializer):
             'id',
             'text',
             'author',
-            'score'
+            'score',
             'pub_date'
         )
         read_only_fields = (
             'id',
             'author',
-            'title'
+            'title',
             'pub_date'
         )
 
