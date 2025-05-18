@@ -47,5 +47,10 @@ urlpatterns = [
         view=views.TokenObtainView.as_view(),
         name='token_obtain_pair'
     ),
+    # path(
+    #     route='v1/genres/<slug:genre_slug>/',
+    #     view=views.TokenObtainView.as_view(),
+    #     name='token_obtain_pair'
+    # ),
     path('v1/', include(router_v1.urls)),
 ]

@@ -8,12 +8,11 @@ from rest_framework import status, viewsets, filters
 from rest_framework.decorators import action
 from rest_framework.views import APIView
 from rest_framework.response import Response
-from rest_framework.pagination import LimitOffsetPagination
 from rest_framework.permissions import (
-    IsAuthenticated, IsAuthenticatedOrReadOnly
+    AllowAny, IsAuthenticated, IsAuthenticatedOrReadOnly
 )
 from rest_framework_simplejwt.tokens import AccessToken
-from .permissions import AdminOnly, IsAuthorOrReadOnly
+from .permissions import AdminOnly, IsAdminOrReadOnly, IsAuthorOrReadOnly
 from .serializers import (
     CategorySerializer, CommentSerializer, GenreSerializer,
     ReviewSerializer, SignUpSerializer, TitleSerializer,
@@ -71,21 +70,23 @@ class ReviewViewSet(viewsets.ModelViewSet):
 class TitleViewSet(viewsets.ModelViewSet):
     queryset = Title.objects.all()
     serializer_class = TitleSerializer
-    permission_classes = [IsAuthenticatedOrReadOnly, IsAuthorOrReadOnly]
-
-    pagination_class = LimitOffsetPagination
+    permission_classes = [IsAdminOrReadOnly]
 
 
-class GenreViewSet(viewsets.ReadOnlyModelViewSet):
+class GenreViewSet(viewsets.ModelViewSet):
     queryset = Genre.objects.all()
     serializer_class = GenreSerializer
-    lookup_field = 'slug'
+    permission_classes = [IsAdminOrReadOnly]
+    filter_backends = [filters.SearchFilter]
+    search_fields = ['name']
 
 
-class CategoryViewSet(viewsets.ReadOnlyModelViewSet):
+class CategoryViewSet(viewsets.ModelViewSet):
     queryset = Category.objects.all()
     serializer_class = CategorySerializer
-    lookup_field = 'slug'
+    permission_classes = [IsAdminOrReadOnly]
+    filter_backends = [filters.SearchFilter]
+    search_fields = ['name']
 
 
 class SignUpView(APIView):
@@ -95,7 +96,7 @@ class SignUpView(APIView):
     Права доступа: Доступно без токена.
     """
 
-    permission_classes = []
+    permission_classes = [AllowAny]
 
     def post(self, request):
         serializer = SignUpSerializer(data=request.data)
@@ -164,7 +165,7 @@ class TokenObtainView(APIView):
 
     Права доступа: Доступно без токена.
     """
-    permission_classes = []
+    permission_classes = [AllowAny]
 
     def post(self, request):
         serializer = TokenSerializer(data=request.data)
@@ -184,10 +185,9 @@ class UserViewSet(viewsets.ModelViewSet):
 
     queryset = User.objects.all()
     serializer_class = UserSerializer
-    permission_classes = [AdminOnly, IsAuthenticated]
+    permission_classes = [AdminOnly]
     lookup_field = 'username'
     http_method_names = ['get', 'post', 'patch', 'delete']
-    pagination_class = LimitOffsetPagination
     filter_backends = [filters.SearchFilter]
     search_fields = ['username']
 

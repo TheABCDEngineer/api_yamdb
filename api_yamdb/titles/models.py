@@ -32,8 +32,11 @@ class Genre(models.Model):
 class Title(models.Model):
     name = models.TextField(max_length=256)
     year = models.IntegerField()
-    description = models.TextField(blank=True)
-    genre = models.ManyToManyField(Genre, related_name='titles')
+    description = models.TextField(blank=True, null=True)
+    genre = models.ManyToManyField(
+        Genre,
+        through='GenreTitle'
+    )
     category = models.ForeignKey(
         Category,
         on_delete=models.CASCADE,
@@ -48,6 +51,17 @@ class Title(models.Model):
     class Meta:
         verbose_name = 'Произведение'
         verbose_name_plural = 'Произведения'
+
+
+class GenreTitle(models.Model):
+    genre = models.ForeignKey(
+        Genre,
+        on_delete=models.CASCADE
+    )
+    title = models.ForeignKey(
+        Title,
+        on_delete=models.CASCADE
+    )
 
 
 class Review(models.Model):
