@@ -12,9 +12,26 @@ User = get_user_model()
 
 
 class CategorySerializer(serializers.ModelSerializer):
+    name = serializers.CharField(
+        max_length=256,
+        required=True
+    )
+    slug = serializers.RegexField(
+        regex=r'^[-a-zA-Z0-9_]+$',
+        max_length=50,
+        required=True
+    )
+
     class Meta:
         model = Category
         fields = ('name', 'slug')
+
+    def validate_slug(self, value):
+        if Category.objects.filter(slug=value).exists():
+            raise serializers.ValidationError(
+                f"Категория с slug '{value}' уже существует."
+            )
+        return value
 
 
 class GenreSerializer(serializers.ModelSerializer):
@@ -193,7 +210,7 @@ class ReviewSerializer(serializers.ModelSerializer):
         )
 
 
-class UsernameSreializer(serializers.Serializer):
+class UsernameEmailSreializer(serializers.Serializer):
     """Сериализатор для username."""
 
     username = serializers.RegexField(
@@ -207,9 +224,6 @@ class UsernameSreializer(serializers.Serializer):
             raise ValidationError('Использовать имя me запрещено.')
         return value
 
-
-class SignUpSerializer(UsernameSreializer):
-    """Сериализатор для логики /signup/."""
     email = serializers.EmailField(required=True, max_length=254)
 
 
