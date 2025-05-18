@@ -38,16 +38,3 @@ class AdminOnly(BasePermission):
             request.user.role == User.ADMIN
             or request.user.is_superuser
         )
-
-    def has_object_permission(self, request, view, obj):
-        """
-        Вызывается после выборки конкретного объекта.
-
-        Позволяет:
-        - Все безопасные методы
-        - Только админам — изменять/удалять объекты
-        """
-        return bool(
-            request.user.role == User.ADMIN
-            or request.user.is_superuser
-        )

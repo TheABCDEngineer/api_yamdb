@@ -141,7 +141,7 @@ class ReviewSerializer(serializers.ModelSerializer):
         )
 
 
-class UsernameSreializer(serializers.Serializer):
+class UsernameEmailSreializer(serializers.Serializer):
     """Сериализатор для username."""
 
     username = serializers.RegexField(
@@ -155,9 +155,6 @@ class UsernameSreializer(serializers.Serializer):
             raise ValidationError('Использовать имя me запрещено.')
         return value
 
-
-class SignUpSerializer(UsernameSreializer):
-    """Сериализатор для логики /signup/."""
     email = serializers.EmailField(required=True, max_length=254)
 
 
