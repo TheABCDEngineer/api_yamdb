@@ -16,8 +16,8 @@ from rest_framework_simplejwt.tokens import AccessToken
 from .permissions import AdminOnly, IsAuthorOrReadOnly
 from .serializers import (
     CategorySerializer, CommentSerializer, GenreSerializer,
-    ReviewSerializer, SignUpSerializer, TitleSerializer,
-    TokenSerializer, UserSerializer, UserMeSerializer
+    ReviewSerializer, TitleSerializer,
+    TokenSerializer, UserSerializer, UserMeSerializer, UsernameEmailSreializer
 )
 from titles.models import Category, Genre, Review, Title
 
@@ -98,7 +98,7 @@ class SignUpView(APIView):
     permission_classes = []
 
     def post(self, request):
-        serializer = SignUpSerializer(data=request.data)
+        serializer = UsernameEmailSreializer(data=request.data)
         if not serializer.is_valid():
             return Response(
                 serializer.errors, status=status.HTTP_400_BAD_REQUEST)
