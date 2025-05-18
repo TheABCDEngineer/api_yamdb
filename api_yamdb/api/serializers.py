@@ -12,6 +12,16 @@ User = get_user_model()
 
 
 class CategorySerializer(serializers.ModelSerializer):
+    name = serializers.CharField(
+        max_length=256,
+        required=True
+    )
+    slug = serializers.RegexField(
+        regex=r'^[-a-zA-Z0-9_]+$',
+        max_length=50,
+        required=True
+    )
+
     class Meta:
         model = Category
         fields = ('name', 'slug')
@@ -31,7 +41,7 @@ class TitleSerializer(serializers.ModelSerializer):
     class Meta:
         model = Title
         fields = (
-            'id', 'name', 'year', 'raiting', 'description', 'genre', 'category'
+            'id', 'name', 'year', 'rating', 'description', 'genre', 'category'
         )
         read_only_fields = (
             'id', 'rating'
