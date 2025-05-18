@@ -7,18 +7,16 @@ from django.shortcuts import get_object_or_404
 from rest_framework import status, viewsets, filters
 from rest_framework.decorators import action
 from rest_framework.views import APIView
-from rest_framework import permissions
 from rest_framework.response import Response
 from rest_framework.permissions import (
     AllowAny, IsAuthenticated, IsAuthenticatedOrReadOnly
 )
-from rest_framework.permissions import AllowAny
 from rest_framework_simplejwt.tokens import AccessToken
 from .permissions import AdminOnly, IsAdminOrReadOnly, IsAuthorOrReadOnly
 from .serializers import (
     CategorySerializer, CommentSerializer, GenreSerializer,
-    ReviewSerializer, TitleSerializer,
-    TokenSerializer, UserSerializer, UserMeSerializer, UsernameEmailSreializer
+    ReviewSerializer, TitleSerializer, TokenSerializer,
+    UserSerializer, UserMeSerializer, UsernameEmailSreializer
 )
 from titles.models import Category, Genre, Review, Title
 
@@ -75,54 +73,32 @@ class TitleViewSet(viewsets.ModelViewSet):
     permission_classes = [IsAdminOrReadOnly]
 
 
-class GenreViewSet(viewsets.ModelViewSet):
+class GenreViewSet(
+    viewsets.mixins.CreateModelMixin,
+    viewsets.mixins.DestroyModelMixin,
+    viewsets.mixins.ListModelMixin,
+    viewsets.GenericViewSet
+):
     queryset = Genre.objects.all()
     serializer_class = GenreSerializer
     permission_classes = [IsAdminOrReadOnly]
-
     lookup_field = 'slug'
     filter_backends = [filters.SearchFilter]
     search_fields = ['name']
 
-    def get_permissions(self):
-        if self.action == 'list':
-            return [AllowAny()]
-        elif self.action in ['create', 'destroy', 'partial_update', 'update']:
-            return [AdminOnly()]
-        return super().get_permissions()
 
-    def retrieve(self, request, *args, **kwargs):
-        return Response(status=status.HTTP_405_METHOD_NOT_ALLOWED)
-    
-    def partial_update(self, request, *args, **kwargs):
-        return Response(status=status.HTTP_405_METHOD_NOT_ALLOWED)
- 
-class CategoryViewSet(viewsets.ModelViewSet):
+class CategoryViewSet(
+    viewsets.mixins.CreateModelMixin,
+    viewsets.mixins.DestroyModelMixin,
+    viewsets.mixins.ListModelMixin,
+    viewsets.GenericViewSet
+):
     queryset = Category.objects.all()
     serializer_class = CategorySerializer
     permission_classes = [IsAdminOrReadOnly]
     lookup_field = 'slug'
     filter_backends = [filters.SearchFilter]
     search_fields = ['name']
-
-    def get_permissions(self):
-        if self.action == 'list':
-            return [AllowAny()]
-        elif self.action in ['create', 'destroy', 'partial_update', 'update']:
-            return [AdminOnly()]
-        return super().get_permissions()
-
-    def create(self, request, *args, **kwargs):
-        serializer = self.get_serializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
-        self.perform_create(serializer)
-        return Response(serializer.data, status=status.HTTP_201_CREATED)
-
-    def retrieve(self, request, *args, **kwargs):
-        return Response(status=status.HTTP_405_METHOD_NOT_ALLOWED)
-
-    def partial_update(self, request, *args, **kwargs):
-        return Response(status=status.HTTP_405_METHOD_NOT_ALLOWED)
 
 
 class SignUpView(APIView):
