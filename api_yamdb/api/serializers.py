@@ -26,6 +26,13 @@ class CategorySerializer(serializers.ModelSerializer):
         model = Category
         fields = ('name', 'slug')
 
+    def validate_slug(self, value):
+        if Category.objects.filter(slug=value).exists():
+            raise serializers.ValidationError(
+                f"Категория с slug '{value}' уже существует."
+            )
+        return value
+
 
 class GenreSerializer(serializers.ModelSerializer):
     class Meta:

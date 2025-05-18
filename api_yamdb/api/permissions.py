@@ -1,8 +1,6 @@
 from django.contrib.auth import get_user_model
 from rest_framework.permissions import BasePermission, SAFE_METHODS
 
-# from .models import User
-
 User = get_user_model()
 
 
@@ -22,6 +20,17 @@ class AdminOnly(BasePermission):
     Только администратор может изменять или удалять контент.
     """
 
-    def has_object_permission(self, request, view, obj):
-        return (request.method in SAFE_METHODS
-                or request.user.role == User.ADMIN)
+    def has_permission(self, request, view):
+        """
+        Вызывается до выборки объекта.
+
+        Позволяет:
+        - Все безопасные методы
+        - Только админам и суперпользователям — небезопасные методы
+        """
+        if not request.user or not request.user.is_authenticated:
+            return False
+        return bool(
+            request.user.role == User.ADMIN
+            or request.user.is_superuser
+        )
