@@ -6,7 +6,7 @@ User = get_user_model()
 
 
 class Category(models.Model):
-    name = models.TextField(max_length=256)
+    name = models.CharField(max_length=256)
     slug = models.SlugField(max_length=50, unique=True)
 
     def __str__(self):
@@ -18,7 +18,7 @@ class Category(models.Model):
 
 
 class Genre(models.Model):
-    name = models.TextField(max_length=256)
+    name = models.CharField(max_length=256)
     slug = models.SlugField(max_length=50, unique=True)
 
     def __str__(self):
@@ -30,7 +30,7 @@ class Genre(models.Model):
 
 
 class Title(models.Model):
-    name = models.TextField(max_length=256)
+    name = models.CharField(max_length=256)
     year = models.IntegerField()
     description = models.TextField(blank=True)
     genre = models.ManyToManyField(Genre, related_name='titles')
@@ -40,6 +40,7 @@ class Title(models.Model):
         related_name="titles",
         blank=False,
         null=True,
+        unique=True,
     )
 
     def __str__(self):

@@ -12,9 +12,26 @@ User = get_user_model()
 
 
 class CategorySerializer(serializers.ModelSerializer):
+    name = serializers.CharField(
+        max_length=256,
+        required=True
+    )
+    slug = serializers.RegexField(
+        regex=r'^[-a-zA-Z0-9_]+$',
+        max_length=50,
+        required=True
+    )
+
     class Meta:
         model = Category
         fields = ('name', 'slug')
+
+    def validate_slug(self, value):
+        if Category.objects.filter(slug=value).exists():
+            raise serializers.ValidationError(
+                f"Категория с slug '{value}' уже существует."
+            )
+        return value
 
 
 class GenreSerializer(serializers.ModelSerializer):
@@ -31,7 +48,7 @@ class TitleSerializer(serializers.ModelSerializer):
     class Meta:
         model = Title
         fields = (
-            'id', 'name', 'year', 'raiting', 'description', 'genre', 'category'
+            'id', 'name', 'year', 'rating', 'description', 'genre', 'category'
         )
         read_only_fields = (
             'id', 'rating'
