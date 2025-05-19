@@ -1,5 +1,5 @@
 import secrets
-
+from django_filters.rest_framework import DjangoFilterBackend
 from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.core.mail import send_mail
@@ -7,18 +7,18 @@ from django.shortcuts import get_object_or_404
 from rest_framework import status, viewsets, filters
 from rest_framework.decorators import action
 from rest_framework.views import APIView
-from rest_framework import permissions
 from rest_framework.response import Response
 from rest_framework.pagination import LimitOffsetPagination
 from rest_framework.permissions import (
     IsAuthenticated, IsAuthenticatedOrReadOnly
 )
+from .filters import TitleFilter
 from rest_framework.permissions import AllowAny
 from rest_framework_simplejwt.tokens import AccessToken
 from .permissions import AdminOnly, IsAuthorOrReadOnly
 from .serializers import (
     CategorySerializer, CommentSerializer, GenreSerializer,
-    ReviewSerializer, SignUpSerializer, TitleSerializer,
+    ReviewSerializer, SignUpSerializer, TitlePost, TitleGet,
     TokenSerializer, UserSerializer, UserMeSerializer
 )
 from titles.models import Category, Genre, Review, Title
@@ -73,9 +73,9 @@ class ReviewViewSet(viewsets.ModelViewSet):
 class TitleViewSet(viewsets.ModelViewSet):
     queryset = Title.objects.all()
     lookup_field = 'id'
-    serializer_class = TitleSerializer
     pagination_class = LimitOffsetPagination
-    filter_backends = [filters.SearchFilter]
+    filter_backends = (DjangoFilterBackend,)
+    filterset_class = TitleFilter
     search_fields = ['name']
 
     def get_permissions(self):
@@ -85,6 +85,11 @@ class TitleViewSet(viewsets.ModelViewSet):
             return [AdminOnly()]
         return super().get_permissions()
 
+    def get_serializer_class(self):
+        if self.action in ('list', 'retrieve'):
+            return TitleGet
+        return TitlePost
+
     def create(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
@@ -92,12 +97,20 @@ class TitleViewSet(viewsets.ModelViewSet):
         return Response(serializer.data, status=status.HTTP_201_CREATED)
 
     def partial_update(self, request, *args, **kwargs):
-        return super().partial_update(request, *args, **kwargs)
+        instance = self.get_object()
+        serializer = self.get_serializer(
+            instance,
+            data=request.data,
+            partial=True
+        )
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+        return Response(serializer.data)
 
     def update(self, request, *args, **kwargs):
         if request.method == 'PUT':
             return Response(
-                {'detail': 'Method "PUT" not allowed.'},
+                {'detail': 'Метод "PUT" не доступен.'},
                 status=status.HTTP_405_METHOD_NOT_ALLOWED
             )
         return super().update(request, *args, **kwargs)

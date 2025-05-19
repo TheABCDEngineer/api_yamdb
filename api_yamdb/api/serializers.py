@@ -40,7 +40,17 @@ class GenreSerializer(serializers.ModelSerializer):
         fields = ('name', 'slug')
 
 
-class TitleSerializer(serializers.ModelSerializer):
+class TitleGet(serializers.ModelSerializer):
+    category = CategorySerializer(many=False, read_only=True)
+    genre = GenreSerializer(many=True, required=True)
+    rating = serializers.IntegerField(read_only=True)
+
+    class Meta:
+        model = Title
+        fields = "__all__"
+
+
+class TitlePost(serializers.ModelSerializer):
     genre = serializers.SlugRelatedField(
         many=True,
         slug_field='slug',
@@ -50,21 +60,15 @@ class TitleSerializer(serializers.ModelSerializer):
         slug_field='slug',
         queryset=Category.objects.all()
     )
-    rating = serializers.SerializerMethodField()
 
     class Meta:
         model = Title
-        fields = (
-            'id', 'name', 'year', 'rating', 'description', 'genre', 'category'
-        )
-        read_only_fields = (
-            'id', 'rating'
-        )
+        fields = '__all__'
 
     def validate_name(self, value):
         if len(value) > 256:
             raise serializers.ValidationError(
-                "Длина названия не должна превышать 256 символов."
+                "Длинна названия не должна превышать 256 символов."
             )
         return value
 
@@ -80,19 +84,19 @@ class TitleSerializer(serializers.ModelSerializer):
         genres_data = validated_data.pop('genre')
         category_obj = validated_data.pop('category')
         title = Title.objects.create(**validated_data, category=category_obj)
-        for genre_obj in genres_data:
-            title.genre.add(genre_obj)
+        title.genre.set(genres_data)
         return title
 
     def update(self, instance, validated_data):
-        genres_data = validated_data.pop('genre')
-        category_obj = validated_data.pop('category')
-        instance.category = category_obj
+        if 'genre' in validated_data:
+            genres_data = validated_data.pop('genre')
+            instance.genre.clear()
+            instance.genre.add(*genres_data)
+        if 'category' in validated_data:
+            instance.category = validated_data.pop('category')
+        for attr, value in validated_data.items():
+            setattr(instance, attr, value)
         instance.save()
-
-        instance.genre.clear()
-        for genre_obj in genres_data:
-            instance.genre.add(genre_obj)
         return instance
 
     def get_rating(self, obj):
