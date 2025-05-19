@@ -6,7 +6,7 @@ from rest_framework import serializers
 from rest_framework.exceptions import ValidationError
 from rest_framework.validators import UniqueValidator
 
-from titles.models import Category, Comment, Genre, GenreTitle, Review, Title
+from reviews.models import Category, Comment, Genre, Review, Title
 
 User = get_user_model()
 
@@ -39,8 +39,15 @@ class GenreSerializer(serializers.ModelSerializer):
         model = Genre
         fields = ('name', 'slug')
 
+    def validate_slug(self, value):
+        if Genre.objects.filter(slug=value).exists():
+            raise serializers.ValidationError(
+                f"Жанр с slug '{value}' уже существует."
+            )
+        return value
 
-class TitleSerializer(serializers.ModelSerializer):
+
+class TitleGetSerializer(serializers.ModelSerializer):
     genre = GenreSerializer(many=True, read_only=True)
     category = CategorySerializer(read_only=True)
     rating = serializers.SerializerMethodField()
@@ -50,9 +57,31 @@ class TitleSerializer(serializers.ModelSerializer):
         fields = (
             'id', 'name', 'year', 'rating', 'description', 'genre', 'category'
         )
-        read_only_fields = (
-            'id', 'rating', 'genre', 'category'
-        )
+
+    def get_rating(self, obj):
+        reviews = obj.reviews.all()
+        if not reviews.exists():
+            return None
+
+        summary_score = sum(review.score for review in reviews)
+        return round(summary_score / len(reviews))
+
+
+class TitlePostSerializer(serializers.ModelSerializer):
+    genre = serializers.SlugRelatedField(
+        many=True,
+        slug_field='slug',
+        required=False,
+        queryset=Genre.objects.all()
+    )
+    category = serializers.SlugRelatedField(
+        slug_field='slug',
+        queryset=Category.objects.all()
+    )
+
+    class Meta:
+        model = Title
+        fields = '__all__'
 
     def validate_year(self, value):
         current_year = datetime.date.today().year
@@ -62,93 +91,12 @@ class TitleSerializer(serializers.ModelSerializer):
             )
         return value
 
-    def validate(self, attr):  # noqa: C901
-        if 'genre' not in self.initial_data:
-            raise ValidationError(
-                'Отсутствует обязательный параментр genre'
+    def validate_name(self, value):
+        if len(value) > 256:
+            raise serializers.ValidationError(
+                "Длинна названия не должна превышать 256 символов."
             )
-        genre_slugs = self.initial_data.get('genre')
-        if not isinstance(genre_slugs, list):
-            raise ValidationError(
-                'Параментр genre должен быть списком'
-            )
-        if not len(genre_slugs):
-            raise ValidationError(
-                'Параментр genre не должен быть пустым'
-            )
-        try:
-            for genre_slug in genre_slugs:
-                _ = Genre.objects.get(slug=genre_slug)
-        except Genre.DoesNotExist:
-            raise ValidationError(
-                f'Жанра {genre_slug} не существует'
-            )
-
-        if 'category' not in self.initial_data:
-            raise ValidationError(
-                'Отсутствует обязательный параментр category'
-            )
-        category_slug = self.initial_data.get('category')
-        if not isinstance(category_slug, str):
-            raise ValidationError(
-                'Параментр category должен быть строкой'
-            )
-        try:
-            _ = Category.objects.get(slug=category_slug)
-        except Category.DoesNotExist:
-            raise ValidationError(
-                f'Категории {category_slug} не существует'
-            )
-
-        return super().validate(attr)
-
-    def create(self, validated_data):
-        category = Category.objects.get(
-            slug=self.initial_data.get('category')
-        )
-        title = Title.objects.create(**validated_data, category=category)
-
-        genre_slugs = self.initial_data.get('genre')
-        self.__save_genres(title, genre_slugs)
-        return title
-
-    def update(self, instance, validated_data):
-        category = Category.objects.get(
-            slug=self.initial_data.get('category')
-        )
-        genre_slugs = self.initial_data.get('genre')
-        GenreTitle.objects.filter(title=instance).delete()
-
-        instance.name = validated_data.get('name', instance.name)
-        instance.year = validated_data.get('year', instance.year)
-        instance.description = validated_data.get(
-            'description', instance.description
-        )
-        instance.category = category
-        instance.save()
-        self.__save_genres(instance, genre_slugs)
-        return instance
-
-    def get_rating(self, obj):
-        reviews = obj.reviews.all()
-        if reviews.count() == 0:
-            return 0
-
-        summary_score = 0
-        for review in reviews:
-            summary_score += review.score
-
-        return round(
-            summary_score / reviews.count()
-        )
-
-    def __save_genres(self, title, genre_slugs):
-        for genre_slug in genre_slugs:
-            genre = Genre.objects.get(slug=genre_slug)
-            GenreTitle.objects.create(
-                genre=genre,
-                title=title
-            )
+        return value
 
 
 class CommentSerializer(serializers.ModelSerializer):
@@ -179,19 +127,12 @@ class ReviewSerializer(serializers.ModelSerializer):
         read_only=True
     )
 
-    def validate(self, attrs):
-        author = self.context['request'].user
-        title = get_object_or_404(
-            Title,
-            pk=self.context['view'].kwargs['title_id']
+    def validate_score(self, value):
+        if 0 < value < 10:
+            return value
+        raise serializers.ValidationError(
+            'Значение score должно быть в диапазоне от 0 до 10'
         )
-        try:
-            _ = author.reviews.get(title=title)
-            raise serializers.ValidationError(
-                'Нельзя оставить более одного отзыва на произведение'
-            )
-        except Review.DoesNotExist:
-            return super().validate(attrs)
 
     class Meta:
         model = Review
@@ -234,15 +175,23 @@ class UserSerializer(serializers.ModelSerializer):
         regex=r'^[\w.@+-]+$',
         max_length=150,
         required=True,
-        validators=[UniqueValidator(queryset=User.objects.all(),
-                                    message='Это имя уже используется.')]
+        validators=[
+            UniqueValidator(
+                queryset=User.objects.all(),
+                message='Это имя уже используется.'
+            )
+        ]
     )
     email = serializers.EmailField(
         max_length=254,
         required=True,
-        validators=[UniqueValidator(queryset=User.objects.all(),
-                                    message='Эта электронная почта '
-                                    'уже используется.')]
+        validators=[
+            UniqueValidator(
+                queryset=User.objects.all(),
+                message='Эта электронная почта '
+                'уже используется.'
+            )
+        ]
     )
 
     def validate_username(self, value):

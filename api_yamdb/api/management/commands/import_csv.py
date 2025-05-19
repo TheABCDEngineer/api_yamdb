@@ -2,7 +2,7 @@ from django.core.management.base import BaseCommand
 import csv
 import os
 from django.conf import settings
-from titles.models import Category, Genre, Title
+from reviews.models import Category, Genre, Title
 
 
 class Command(BaseCommand):
