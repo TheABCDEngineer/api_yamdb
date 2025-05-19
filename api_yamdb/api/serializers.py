@@ -162,8 +162,28 @@ class ReviewSerializer(serializers.ModelSerializer):
         )
 
 
-class SignUpSerializer(serializers.ModelSerializer):
-    """Сериализатор для пользователя."""
+class UsernameSreializer(serializers.Serializer):
+    """Сериализатор для username."""
+
+    username = serializers.RegexField(
+        regex=r'^[\w.@+-]+$',
+        max_length=150,
+        required=True,
+    )
+
+    def validate_username(self, value):
+        if value == 'me':
+            raise ValidationError('Использовать имя me запрещено.')
+        return value
+
+
+class SignUpSerializer(UsernameSreializer):
+    """Сериализатор для логики /signup/."""
+    email = serializers.EmailField(required=True, max_length=254)
+
+
+class UserSerializer(serializers.ModelSerializer):
+    """Сериализатор для логики /users/."""
 
     username = serializers.RegexField(
         regex=r'^[\w.@+-]+$',
@@ -187,22 +207,21 @@ class SignUpSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = User
-        fields = ['username', 'email']
-
-
-class UserSerializer(SignUpSerializer):
-    """Сериализатор для регистрации."""
-
-    class Meta:
-        model = User
         fields = [
             'username', 'email', 'first_name',
             'last_name', 'bio', 'role'
         ]
 
 
+class UserMeSerializer(UserSerializer):
+    """Сериализатор для логики эндпоинта /me/ ."""
+
+    role = serializers.CharField(read_only=True)
+
+
 class TokenSerializer(serializers.Serializer):
     """Сериализатор для выдачи токена."""
+
     username = serializers.CharField(required=True)
     confirmation_code = serializers.CharField(required=True)
 

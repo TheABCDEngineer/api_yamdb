@@ -8,6 +8,8 @@ class IsAuthorOrReadOnly(BasePermission):
     """Разрешает редактирование только автору объекта."""
 
     def has_object_permission(self, request, view, obj):
+        if not request.user or not request.user.is_authenticated:
+            return False
         return (
             request.method in SAFE_METHODS
             or obj.author == request.user
@@ -15,9 +17,9 @@ class IsAuthorOrReadOnly(BasePermission):
 
 
 class AdminOnly(BasePermission):
-    """Кастомная проверка для вьюсетов.
+    """Кастомная проверка для вьюсетов /users/.
 
-    Только администратор может изменять или удалять контент.
+    Только администратор или суперюзер может изменять или удалять контент.
     """
 
     def has_permission(self, request, view):
