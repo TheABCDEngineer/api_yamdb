@@ -72,9 +72,9 @@ class ReviewViewSet(viewsets.ModelViewSet):
 
 class TitleViewSet(viewsets.ModelViewSet):
     queryset = Title.objects.all()
+    lookup_field = 'id'
     serializer_class = TitleSerializer
     pagination_class = LimitOffsetPagination
-    lookup_field = 'slug'
     filter_backends = [filters.SearchFilter]
     search_fields = ['name']
 
@@ -92,7 +92,15 @@ class TitleViewSet(viewsets.ModelViewSet):
         return Response(serializer.data, status=status.HTTP_201_CREATED)
 
     def partial_update(self, request, *args, **kwargs):
-        return Response(status=status.HTTP_405_METHOD_NOT_ALLOWED)
+        return super().partial_update(request, *args, **kwargs)
+
+    def update(self, request, *args, **kwargs):
+        if request.method == 'PUT':
+            return Response(
+                {'detail': 'Method "PUT" not allowed.'},
+                status=status.HTTP_405_METHOD_NOT_ALLOWED
+            )
+        return super().update(request, *args, **kwargs)
 
 
 class GenreViewSet(viewsets.ModelViewSet):
