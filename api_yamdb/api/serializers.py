@@ -63,7 +63,9 @@ class TitleSerializer(serializers.ModelSerializer):
 
     def validate_name(self, value):
         if len(value) > 256:
-            raise serializers.ValidationError("Длина названия не должна превышать 256 символов.")
+            raise serializers.ValidationError(
+                "Длина названия не должна превышать 256 символов."
+            )
         return value
 
     def validate_year(self, value):
@@ -151,14 +153,14 @@ class ReviewSerializer(serializers.ModelSerializer):
             'id',
             'text',
             'author',
-            'score'
-            'pub_date'
+            'score',
+            'pub_date',
         )
         read_only_fields = (
             'id',
             'author',
-            'title'
-            'pub_date'
+            'title',
+            'pub_date',
         )
 
 
