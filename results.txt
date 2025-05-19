@@ -1,0 +1,236 @@
+============================= test session starts =============================
+platform win32 -- Python 3.9.13, pytest-6.2.4, py-1.11.0, pluggy-0.13.1 -- D:\Dev\group_project\venv\Scripts\python.exe
+django: settings: api_yamdb.settings (from ini)
+rootdir: D:\Dev\group_project\api_yamdb, configfile: pytest.ini
+plugins: django-4.4.0, pythonpath-0.7.3
+collecting ... collected 6 items
+
+tests/test_04_title.py::Test04TitleAPI::test_01_title_not_auth PASSED    [ 16%]
+tests/test_04_title.py::Test04TitleAPI::test_02_title_admin FAILED       [ 33%]
+tests/test_04_title.py::Test04TitleAPI::test_03_titles_detail FAILED     [ 50%]
+tests/test_04_title.py::Test04TitleAPI::test_04_titles_name_length_validation FAILED [ 66%]
+tests/test_04_title.py::Test04TitleAPI::test_05_titles_check_permission FAILED [ 83%]
+tests/test_04_title.py::Test04TitleAPI::test_06_titles_detail_put_not_allowed FAILED [100%]
+
+================================== FAILURES ===================================
+_____________________ Test04TitleAPI.test_02_title_admin ______________________
+
+self = <tests.test_04_title.Test04TitleAPI object at 0x0000024405284730>
+admin_client = <rest_framework.test.APIClient object at 0x0000024405377640>
+client = <django.test.client.Client object at 0x00000244053F9190>
+
+    def test_02_title_admin(self, admin_client, client):
+        genres = create_genre(admin_client)
+        categories = create_categories(admin_client)
+        title_count = 0
+    
+        assert_msg = (
+            f'Если POST-запрос администратора к `{self.TITLES_URL}` '
+            'содержит некорректные данные - должен вернуться ответ со '
+            'статусом 400.'
+        )
+        data = {}
+        response = admin_client.post(self.TITLES_URL, data=data)
+        assert response.status_code == HTTPStatus.BAD_REQUEST, assert_msg
+    
+        invalid_data = {
+            'name': 'Угнать за 60 секунд',
+            'year': 'дветыщи',
+            'genre': [genres[1]['slug']],
+            'category': categories[1]['slug'],
+            'description': 'Угонял машины всю ночь и немного подустал.'
+        }
+        response = admin_client.post(self.TITLES_URL, data=invalid_data)
+        assert response.status_code == HTTPStatus.BAD_REQUEST, assert_msg
+    
+        post_data_1 = {
+            'name': 'Мост через реку Квай',
+            'year': 1957,
+            'genre': [genres[0]['slug'], genres[1]['slug']],
+            'category': categories[0]['slug'],
+            'description': 'Рон Свонсон рекомендует.'
+        }
+        response = admin_client.post(self.TITLES_URL, data=post_data_1)
+>       assert response.status_code == HTTPStatus.CREATED, (
+            f'Если POST-запрос администратора к `{self.TITLES_URL}` '
+            'содержит корректные данные - должен вернуться ответ со статусом '
+            '201.'
+        )
+E       AssertionError: Если POST-запрос администратора к `/api/v1/titles/` содержит корректные данные - должен вернуться ответ со статусом 201.
+E       assert 400 == <HTTPStatus.CREATED: 201>
+E         +400
+E         -<HTTPStatus.CREATED: 201>
+
+tests\test_04_title.py:58: AssertionError
+------------------------------ Captured log call ------------------------------
+WARNING  django.request:log.py:224 Bad Request: /api/v1/titles/
+WARNING  django.request:log.py:224 Bad Request: /api/v1/titles/
+WARNING  django.request:log.py:224 Bad Request: /api/v1/titles/
+____________________ Test04TitleAPI.test_03_titles_detail _____________________
+
+self = <tests.test_04_title.Test04TitleAPI object at 0x0000024405211730>
+client = <django.test.client.Client object at 0x00000244053240A0>
+admin_client = <rest_framework.test.APIClient object at 0x0000024405324A30>
+
+    def test_03_titles_detail(self, client, admin_client):
+>       titles, categories, _ = create_titles(admin_client)
+
+tests\test_04_title.py:195: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+admin_client = <rest_framework.test.APIClient object at 0x0000024405324A30>
+
+    def create_titles(admin_client):
+        genres = create_genre(admin_client)
+        categories = create_categories(admin_client)
+        result = []
+        data = {
+            'name': 'Терминатор',
+            'year': 1984,
+            'genre': [genres[0]['slug'], genres[1]['slug']],
+            'category': categories[0]['slug'],
+            'description': 'I`ll be back'
+        }
+        response = admin_client.post('/api/v1/titles/', data=data)
+>       assert response.status_code == HTTPStatus.CREATED, (
+            'Если POST-запрос администратора к `/api/v1/titles/` содержит '
+            'корректные данные - должен вернуться ответ со статусом 201.'
+        )
+E       AssertionError: Если POST-запрос администратора к `/api/v1/titles/` содержит корректные данные - должен вернуться ответ со статусом 201.
+
+tests\utils.py:227: AssertionError
+------------------------------ Captured log call ------------------------------
+WARNING  django.request:log.py:224 Bad Request: /api/v1/titles/
+____________ Test04TitleAPI.test_04_titles_name_length_validation _____________
+
+self = <tests.test_04_title.Test04TitleAPI object at 0x0000024405377700>
+admin_client = <rest_framework.test.APIClient object at 0x00000244053561C0>
+
+    def test_04_titles_name_length_validation(self, admin_client):
+        genres = create_genre(admin_client)
+        categories = create_categories(admin_client)
+    
+        data = {
+            'name': 'It`s Over 9000!' + '!' * 242,
+            'year': 1989,
+            'genre': [genres[0]['slug'], genres[1]['slug']],
+            'category': categories[0]['slug'],
+            'description': 'Dragon Ball Z'
+        }
+        response = admin_client.post(self.TITLES_URL, data=data)
+        assert response.status_code == HTTPStatus.BAD_REQUEST, (
+            'Убедитесь, что при обработке POST-запроса администратора к '
+            f'`{self.TITLES_URL}` проверяется длина поля `name`: название '
+            'произведения не может быть длиннее 256 символов.'
+        )
+    
+        data = {
+            'name': 'Мост через реку Квай',
+            'year': 1957,
+            'genre': [genres[0]['slug'], genres[1]['slug']],
+            'category': categories[0]['slug'],
+            'description': 'Рон Свонсон рекомендует.'
+        }
+        response = admin_client.post(self.TITLES_URL, data=data)
+>       assert response.status_code == HTTPStatus.CREATED, (
+            f'Если POST-запрос администратора к `{self.TITLES_URL}` '
+            'содержит корректные данные - должен вернуться ответ со статусом '
+            '201.'
+        )
+E       AssertionError: Если POST-запрос администратора к `/api/v1/titles/` содержит корректные данные - должен вернуться ответ со статусом 201.
+E       assert 400 == <HTTPStatus.CREATED: 201>
+E         +400
+E         -<HTTPStatus.CREATED: 201>
+
+tests\test_04_title.py:302: AssertionError
+------------------------------ Captured log call ------------------------------
+WARNING  django.request:log.py:224 Bad Request: /api/v1/titles/
+WARNING  django.request:log.py:224 Bad Request: /api/v1/titles/
+_______________ Test04TitleAPI.test_05_titles_check_permission ________________
+
+self = <tests.test_04_title.Test04TitleAPI object at 0x000002440534F910>
+client = <django.test.client.Client object at 0x00000244053141C0>
+user_client = <rest_framework.test.APIClient object at 0x0000024405314130>
+moderator_client = <rest_framework.test.APIClient object at 0x0000024405335A60>
+admin_client = <rest_framework.test.APIClient object at 0x00000244053350D0>
+
+    def test_05_titles_check_permission(self, client, user_client,
+                                        moderator_client, admin_client):
+>       titles, categories, genres = create_titles(admin_client)
+
+tests\test_04_title.py:325: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+admin_client = <rest_framework.test.APIClient object at 0x00000244053350D0>
+
+    def create_titles(admin_client):
+        genres = create_genre(admin_client)
+        categories = create_categories(admin_client)
+        result = []
+        data = {
+            'name': 'Терминатор',
+            'year': 1984,
+            'genre': [genres[0]['slug'], genres[1]['slug']],
+            'category': categories[0]['slug'],
+            'description': 'I`ll be back'
+        }
+        response = admin_client.post('/api/v1/titles/', data=data)
+>       assert response.status_code == HTTPStatus.CREATED, (
+            'Если POST-запрос администратора к `/api/v1/titles/` содержит '
+            'корректные данные - должен вернуться ответ со статусом 201.'
+        )
+E       AssertionError: Если POST-запрос администратора к `/api/v1/titles/` содержит корректные данные - должен вернуться ответ со статусом 201.
+
+tests\utils.py:227: AssertionError
+------------------------------ Captured log call ------------------------------
+WARNING  django.request:log.py:224 Bad Request: /api/v1/titles/
+____________ Test04TitleAPI.test_06_titles_detail_put_not_allowed _____________
+
+self = <tests.test_04_title.Test04TitleAPI object at 0x00000244051AFB20>
+admin_client = <rest_framework.test.APIClient object at 0x00000244052D6460>
+user = <User: TestUser>
+
+    def test_06_titles_detail_put_not_allowed(self, admin_client, user):
+>       titles, _, _ = create_titles(admin_client)
+
+tests\test_04_title.py:343: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+admin_client = <rest_framework.test.APIClient object at 0x00000244052D6460>
+
+    def create_titles(admin_client):
+        genres = create_genre(admin_client)
+        categories = create_categories(admin_client)
+        result = []
+        data = {
+            'name': 'Терминатор',
+            'year': 1984,
+            'genre': [genres[0]['slug'], genres[1]['slug']],
+            'category': categories[0]['slug'],
+            'description': 'I`ll be back'
+        }
+        response = admin_client.post('/api/v1/titles/', data=data)
+>       assert response.status_code == HTTPStatus.CREATED, (
+            'Если POST-запрос администратора к `/api/v1/titles/` содержит '
+            'корректные данные - должен вернуться ответ со статусом 201.'
+        )
+E       AssertionError: Если POST-запрос администратора к `/api/v1/titles/` содержит корректные данные - должен вернуться ответ со статусом 201.
+
+tests\utils.py:227: AssertionError
+------------------------------ Captured log call ------------------------------
+WARNING  django.request:log.py:224 Bad Request: /api/v1/titles/
+-------------------------- Captured stderr teardown ---------------------------
+Destroying test database for alias 'default' ('file:memorydb_default?mode=memory&cache=shared')...
+============================== warnings summary ===============================
+..\venv\lib\site-packages\django\apps\registry.py:91
+  D:\Dev\group_project\venv\lib\site-packages\django\apps\registry.py:91: RemovedInDjango41Warning: 'api' defines default_app_config = 'api.apps.ApiConfig'. Django now detects this configuration automatically. You can remove default_app_config.
+    app_config = AppConfig.create(entry)
+
+-- Docs: https://docs.pytest.org/en/stable/warnings.html
+=========================== short test summary info ===========================
+FAILED tests/test_04_title.py::Test04TitleAPI::test_02_title_admin - Assertio...
+FAILED tests/test_04_title.py::Test04TitleAPI::test_03_titles_detail - Assert...
+FAILED tests/test_04_title.py::Test04TitleAPI::test_04_titles_name_length_validation
+FAILED tests/test_04_title.py::Test04TitleAPI::test_05_titles_check_permission
+FAILED tests/test_04_title.py::Test04TitleAPI::test_06_titles_detail_put_not_allowed
+=================== 5 failed, 1 passed, 1 warning in 1.80s ====================

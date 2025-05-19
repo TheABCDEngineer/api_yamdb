@@ -41,8 +41,15 @@ class GenreSerializer(serializers.ModelSerializer):
 
 
 class TitleSerializer(serializers.ModelSerializer):
-    genre = GenreSerializer(many=True)
-    category = CategorySerializer()
+    genre = serializers.SlugRelatedField(
+        many=True,
+        slug_field='slug',
+        queryset=Genre.objects.all()
+    )
+    category = serializers.SlugRelatedField(
+        slug_field='slug',
+        queryset=Category.objects.all()
+    )
     rating = serializers.SerializerMethodField()
 
     class Meta:
@@ -54,6 +61,11 @@ class TitleSerializer(serializers.ModelSerializer):
             'id', 'rating'
         )
 
+    def validate_name(self, value):
+        if len(value) > 256:
+            raise serializers.ValidationError("Длина названия не должна превышать 256 символов.")
+        return value
+
     def validate_year(self, value):
         current_year = datetime.date.today().year
         if value > current_year:
@@ -64,39 +76,31 @@ class TitleSerializer(serializers.ModelSerializer):
 
     def create(self, validated_data):
         genres_data = validated_data.pop('genre')
-        category_data = validated_data.pop('category')
-        category_obj, _ = Category.objects.get_or_create(**category_data)
+        category_obj = validated_data.pop('category')
         title = Title.objects.create(**validated_data, category=category_obj)
-        for genre_data in genres_data:
-            genre_obj, _ = Genre.objects.get_or_create(**genre_data)
+        for genre_obj in genres_data:
             title.genre.add(genre_obj)
         return title
 
     def update(self, instance, validated_data):
         genres_data = validated_data.pop('genre')
-        category_data = validated_data.pop('category')
-        category_obj, _ = Category.objects.get_or_create(**category_data)
+        category_obj = validated_data.pop('category')
         instance.category = category_obj
         instance.save()
 
         instance.genre.clear()
-        for genre_data in genres_data:
-            genre_obj, _ = Genre.objects.get_or_create(**genre_data)
+        for genre_obj in genres_data:
             instance.genre.add(genre_obj)
         return instance
 
     def get_rating(self, obj):
         reviews = obj.reviews.all()
-        if reviews.count() == 0:
-            return 0
+        if not reviews.exists():
+            return None
 
-        summary_score = 0
-        for review in reviews:
-            summary_score += review.score
-
-        return round(
-            summary_score / reviews.count()
-        )
+        summary_score = sum(review.score for review in reviews)
+        average_rating = round(summary_score / reviews.count())
+        return average_rating
 
 
 class CommentSerializer(serializers.ModelSerializer):
