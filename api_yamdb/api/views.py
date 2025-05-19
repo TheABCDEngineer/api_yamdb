@@ -75,13 +75,14 @@ class TitleViewSet(viewsets.ModelViewSet):
     lookup_field = 'id'
     pagination_class = LimitOffsetPagination
     filter_backends = (DjangoFilterBackend,)
+    http_method_names = ['get', 'post', 'patch', 'delete']
     filterset_class = TitleFilter
     search_fields = ['name']
 
     def get_permissions(self):
         if self.action == 'list':
             return [AllowAny()]
-        elif self.action in ['create', 'destroy', 'partial_update', 'update']:
+        elif self.action in ['create', 'update', 'partial_update', 'destroy']:
             return [AdminOnly()]
         return super().get_permissions()
 
@@ -89,31 +90,6 @@ class TitleViewSet(viewsets.ModelViewSet):
         if self.action in ('list', 'retrieve'):
             return TitleGet
         return TitlePost
-
-    def create(self, request, *args, **kwargs):
-        serializer = self.get_serializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
-        self.perform_create(serializer)
-        return Response(serializer.data, status=status.HTTP_201_CREATED)
-
-    def partial_update(self, request, *args, **kwargs):
-        instance = self.get_object()
-        serializer = self.get_serializer(
-            instance,
-            data=request.data,
-            partial=True
-        )
-        serializer.is_valid(raise_exception=True)
-        serializer.save()
-        return Response(serializer.data)
-
-    def update(self, request, *args, **kwargs):
-        if request.method == 'PUT':
-            return Response(
-                {'detail': 'Метод "PUT" не доступен.'},
-                status=status.HTTP_405_METHOD_NOT_ALLOWED
-            )
-        return super().update(request, *args, **kwargs)
 
 
 class GenreViewSet(viewsets.ModelViewSet):

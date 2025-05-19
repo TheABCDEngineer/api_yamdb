@@ -2,7 +2,8 @@ import datetime
 
 from django.contrib.auth import get_user_model
 from django.shortcuts import get_object_or_404
-from rest_framework import serializers
+from rest_framework import serializers, status
+from rest_framework.response import Response
 from rest_framework.exceptions import ValidationError
 from rest_framework.validators import UniqueValidator
 
@@ -86,6 +87,9 @@ class TitlePost(serializers.ModelSerializer):
         title = Title.objects.create(**validated_data, category=category_obj)
         title.genre.set(genres_data)
         return title
+
+    def partial_update(self, request, *args, **kwargs):
+        return Response(status=status.HTTP_403_Forbidden)
 
     def update(self, instance, validated_data):
         if 'genre' in validated_data:
