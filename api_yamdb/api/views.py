@@ -12,13 +12,15 @@ from rest_framework.permissions import (
     AllowAny, IsAuthenticated, IsAuthenticatedOrReadOnly
 )
 from rest_framework_simplejwt.tokens import AccessToken
+from .filters import TitleFilter
 from .permissions import AdminOnly, IsAdminOrReadOnly, IsAuthorOrReadOnly
 from .serializers import (
-    CategorySerializer, CommentSerializer, GenreSerializer,
-    ReviewSerializer, TitleSerializer, TokenSerializer,
-    UserSerializer, UserMeSerializer, UsernameEmailSreializer
+    CategorySerializer, CommentSerializer, GenreSerializer, ReviewSerializer,
+    TitleGetSerializer, TitlePostSerializer, TokenSerializer, UserSerializer,
+    UserMeSerializer, UsernameEmailSreializer
 )
-from titles.models import Category, Genre, Review, Title
+from reviews.models import Category, Genre, Review, Title
+
 
 User = get_user_model()
 
@@ -26,6 +28,7 @@ User = get_user_model()
 class CommentViewSet(viewsets.ModelViewSet):
     serializer_class = CommentSerializer
     permission_classes = [IsAuthenticatedOrReadOnly, IsAuthorOrReadOnly]
+    http_method_names = ['get', 'post', 'patch', 'delete']
 
     def get_queryset(self):
         return self.__get_request_review().comments.all()
@@ -50,9 +53,22 @@ class CommentViewSet(viewsets.ModelViewSet):
 class ReviewViewSet(viewsets.ModelViewSet):
     serializer_class = ReviewSerializer
     permission_classes = [IsAuthenticatedOrReadOnly, IsAuthorOrReadOnly]
+    http_method_names = ['get', 'post', 'patch', 'delete']
 
     def get_queryset(self):
         return self.__get_request_title().reviews.all()
+
+    def create(self, request, *args, **kwargs):
+        try:
+            _ = request.user.reviews.get(
+                title=self.__get_request_title()
+            )
+            return Response(
+                'Нельзя оставить более одного отзыва на произведение',
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        except Review.DoesNotExist:
+            return super().create(request, *args, **kwargs)
 
     def perform_create(self, serializer):
         serializer.save(
@@ -69,8 +85,15 @@ class ReviewViewSet(viewsets.ModelViewSet):
 
 class TitleViewSet(viewsets.ModelViewSet):
     queryset = Title.objects.all()
-    serializer_class = TitleSerializer
+    serializer_class = TitleGetSerializer
     permission_classes = [IsAdminOrReadOnly]
+    filterset_class = TitleFilter
+    http_method_names = ['get', 'post', 'patch', 'delete']
+
+    def get_serializer_class(self):
+        if self.action in ['list', 'retrieve']:
+            return TitleGetSerializer
+        return TitlePostSerializer
 
 
 class GenreViewSet(
@@ -102,12 +125,6 @@ class CategoryViewSet(
 
 
 class SignUpView(APIView):
-    """
-    Вью-класс для регистрация нового пользователя.
-
-    Права доступа: Доступно без токена.
-    """
-
     permission_classes = [AllowAny]
 
     def post(self, request):
@@ -161,7 +178,6 @@ class SignUpView(APIView):
                         status=status.HTTP_200_OK)
 
     def send_confirmation_code(self, email, code, username):
-        """Логика отправки письма с confirmation_code."""
         send_mail(
             subject='Ваш код подтверждения',
             message=f'Здравствуйте, {username}! Ваш код подтверждения: {code}',
@@ -172,11 +188,6 @@ class SignUpView(APIView):
 
 
 class TokenObtainView(APIView):
-    """
-    Получение JWT-токена в обмен на username и confirmation code.
-
-    Права доступа: Доступно без токена.
-    """
     permission_classes = [AllowAny]
 
     def post(self, request):
@@ -189,12 +200,6 @@ class TokenObtainView(APIView):
 
 
 class UserViewSet(viewsets.ModelViewSet):
-    """
-    Вьюсет для работы с пользователями.
-
-    Права доступа: администратор, кроме эндпоинта /me/.
-    """
-
     queryset = User.objects.all()
     serializer_class = UserSerializer
     permission_classes = [AdminOnly]
@@ -203,12 +208,13 @@ class UserViewSet(viewsets.ModelViewSet):
     filter_backends = [filters.SearchFilter]
     search_fields = ['username']
 
-    @action(detail=False,
-            methods=['get', 'patch'],
-            permission_classes=[IsAuthenticated],
-            serializer_class=UserMeSerializer)
+    @action(
+        detail=False,
+        methods=['get', 'patch'],
+        permission_classes=[IsAuthenticated],
+        serializer_class=UserMeSerializer
+    )
     def me(self, request):
-        """Логика для эндпоинта /me/ ."""
         user = request.user
         if request.method == 'GET':
             serializer = self.get_serializer(user)

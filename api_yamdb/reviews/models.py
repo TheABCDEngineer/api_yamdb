@@ -42,8 +42,7 @@ class Title(models.Model):
         on_delete=models.CASCADE,
         related_name="titles",
         blank=False,
-        null=True,
-        unique=True,
+        null=True
     )
 
     def __str__(self):
