@@ -136,19 +136,16 @@ class SignUpView(APIView):
         username = serializer.validated_data.get('username')
         email = serializer.validated_data.get('email')
 
-        if (
-            User.objects.filter(email=email)
-            .exclude(username=username).exists()
-        ):
+        existing_user_with_email = User.objects.filter(
+            email=email).exclude(username=username).first()
+        if existing_user_with_email:
             return Response(
                 {'email': 'Этот email уже используется'},
                 status=status.HTTP_400_BAD_REQUEST
             )
-
-        if (
-            User.objects.filter(username=username)
-            .exclude(email=email).exists()
-        ):
+        existing_user_with_username = User.objects.filter(
+            username=username).exclude(email=email).first()
+        if existing_user_with_username:
             return Response(
                 {'email': 'Этот username уже используется'},
                 status=status.HTTP_400_BAD_REQUEST
@@ -156,7 +153,9 @@ class SignUpView(APIView):
 
         code = secrets.token_urlsafe(16)
 
-        if User.objects.filter(username=username, email=email).exists():
+        existing_user = User.objects.filter(
+            username=username, email=email).first()
+        if existing_user:
             user = User.objects.get(username=username)
             user.confirmation_code = code
             user.save()
@@ -167,7 +166,7 @@ class SignUpView(APIView):
                 status=status.HTTP_200_OK
             )
 
-        user = User.objects.create(
+        user = User.objects.create_user(
             username=username,
             email=email,
             confirmation_code=code
@@ -181,7 +180,7 @@ class SignUpView(APIView):
         send_mail(
             subject='Ваш код подтверждения',
             message=f'Здравствуйте, {username}! Ваш код подтверждения: {code}',
-            from_email=settings.DEFAULT_FROM_EMAIL,
+            from_email=None,
             recipient_list=[email],
             fail_silently=False,
         )
