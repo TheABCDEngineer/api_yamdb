@@ -80,6 +80,6 @@ python manage.py runserver
 
 ---
 # Авторы
-+ **Антон Комягин** [[[TheABCDEngineer](https://github.com/TheABCDEngineer)]
++ **Антон Комягин** [TheABCDEngineer](https://github.com/TheABCDEngineer)
 + **Павел Полянский** [PavelPolyanskiy](https://github.com/PavelPolyanskiy)
 + **Егор Попов** [Mr-EgorPopov](https://github.com/Mr-EgorPopov)
