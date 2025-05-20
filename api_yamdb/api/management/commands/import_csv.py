@@ -15,7 +15,8 @@ class Command(BaseCommand):
             os.path.join(
                 data_dir,
                 'category.csv'
-                ), encoding='utf-8') as f:
+            ), encoding='utf-8'
+        ) as f:
             reader = csv.DictReader(f)
             for row in reader:
                 Category.objects.update_or_create(
