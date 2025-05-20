@@ -2,6 +2,7 @@ import datetime
 
 from django.contrib.auth import get_user_model
 from django.shortcuts import get_object_or_404
+from api.constants import MAX_SCORE, MIN_SCORE, VALIDATE_LENGTH_TITLE
 from rest_framework import serializers
 from rest_framework.exceptions import ValidationError
 from rest_framework.validators import UniqueValidator
@@ -92,7 +93,7 @@ class TitlePostSerializer(serializers.ModelSerializer):
         return value
 
     def validate_name(self, value):
-        if len(value) > 256:
+        if len(value) > VALIDATE_LENGTH_TITLE:
             raise serializers.ValidationError(
                 "Длинна названия не должна превышать 256 символов."
             )
@@ -128,7 +129,7 @@ class ReviewSerializer(serializers.ModelSerializer):
     )
 
     def validate_score(self, value):
-        if 0 < value < 10:
+        if MIN_SCORE <= value <= MAX_SCORE:
             return value
         raise serializers.ValidationError(
             'Значение score должно быть в диапазоне от 0 до 10'
