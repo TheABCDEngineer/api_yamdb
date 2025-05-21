@@ -1,22 +1,17 @@
-import datetime
-
 from django.contrib.auth import get_user_model
 from django.shortcuts import get_object_or_404
-from api.constants import MAX_SCORE, MIN_SCORE, VALIDATE_LENGTH_TITLE
+from django.utils import timezone
 from rest_framework import serializers
 from rest_framework.exceptions import ValidationError
 from rest_framework.validators import UniqueValidator
 
+from api.constants import MAX_SCORE, MIN_SCORE, VALIDATE_LENGTH_TITLE
 from reviews.models import Category, Comment, Genre, Review, Title
 
 User = get_user_model()
 
 
 class CategorySerializer(serializers.ModelSerializer):
-    name = serializers.CharField(
-        max_length=256,
-        required=True
-    )
     slug = serializers.RegexField(
         regex=r'^[-a-zA-Z0-9_]+$',
         max_length=50,
@@ -28,9 +23,9 @@ class CategorySerializer(serializers.ModelSerializer):
         fields = ('name', 'slug')
 
     def validate_slug(self, value):
-        if Category.objects.filter(slug=value).exists():
+        if Category.objects.filter(slug=value).first():
             raise serializers.ValidationError(
-                f"Категория с slug '{value}' уже существует."
+                f'Категория с slug "{value}" уже существует.'
             )
         return value
 
@@ -41,9 +36,9 @@ class GenreSerializer(serializers.ModelSerializer):
         fields = ('name', 'slug')
 
     def validate_slug(self, value):
-        if Genre.objects.filter(slug=value).exists():
+        if Genre.objects.filter(slug=value).first():
             raise serializers.ValidationError(
-                f"Жанр с slug '{value}' уже существует."
+                f'Жанр с slug "{value}" уже существует.'
             )
         return value
 
@@ -51,21 +46,13 @@ class GenreSerializer(serializers.ModelSerializer):
 class TitleGetSerializer(serializers.ModelSerializer):
     genre = GenreSerializer(many=True, read_only=True)
     category = CategorySerializer(read_only=True)
-    rating = serializers.SerializerMethodField()
+    rating = serializers.FloatField(read_only=True)
 
     class Meta:
         model = Title
         fields = (
             'id', 'name', 'year', 'rating', 'description', 'genre', 'category'
         )
-
-    def get_rating(self, obj):
-        reviews = obj.reviews.all()
-        if not reviews.exists():
-            return None
-
-        summary_score = sum(review.score for review in reviews)
-        return round(summary_score / len(reviews))
 
 
 class TitlePostSerializer(serializers.ModelSerializer):
@@ -82,20 +69,22 @@ class TitlePostSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Title
-        fields = '__all__'
+        fields = (
+            'id', 'name', 'year', 'description', 'genre', 'category'
+        )
 
     def validate_year(self, value):
-        current_year = datetime.date.today().year
+        current_year = timezone.now().year
         if value > current_year:
             raise serializers.ValidationError(
-                f"Год не может быть больше текущего года ({current_year})."
+                f'Год не может быть больше текущего года ({current_year}).'
             )
         return value
 
     def validate_name(self, value):
         if len(value) > VALIDATE_LENGTH_TITLE:
             raise serializers.ValidationError(
-                "Длинна названия не должна превышать 256 символов."
+                'Длина названия не должна превышать 256 символов.'
             )
         return value
 
