@@ -1,26 +1,25 @@
-import secrets
-
-from django.conf import settings
 from django.contrib.auth import get_user_model
+from django.contrib.auth.tokens import default_token_generator
 from django.core.mail import send_mail
+from django.db.models import Avg, Prefetch
 from django.shortcuts import get_object_or_404
-from rest_framework import status, viewsets, filters
+from rest_framework import filters, status, viewsets
 from rest_framework.decorators import action
-from rest_framework.views import APIView
-from rest_framework.response import Response
 from rest_framework.permissions import (
     AllowAny, IsAuthenticated, IsAuthenticatedOrReadOnly
 )
+from rest_framework.response import Response
+from rest_framework.views import APIView
 from rest_framework_simplejwt.tokens import AccessToken
+
 from .filters import TitleFilter
 from .permissions import AdminOnly, IsAdminOrReadOnly, IsAuthorOrReadOnly
 from .serializers import (
     CategorySerializer, CommentSerializer, GenreSerializer, ReviewSerializer,
-    TitleGetSerializer, TitlePostSerializer, TokenSerializer, UserSerializer,
-    UserMeSerializer, UsernameEmailSreializer
+    TitleGetSerializer, TitlePostSerializer, TokenSerializer, UserMeSerializer,
+    UsernameEmailSreializer, UserSerializer
 )
 from reviews.models import Category, Genre, Review, Title
-
 
 User = get_user_model()
 
@@ -31,7 +30,9 @@ class CommentViewSet(viewsets.ModelViewSet):
     http_method_names = ['get', 'post', 'patch', 'delete']
 
     def get_queryset(self):
-        return self.__get_request_review().comments.all()
+        return self.__get_request_review().comments.select_related(
+            'author'
+        ).all()
 
     def perform_create(self, serializer):
         serializer.save(
@@ -56,9 +57,13 @@ class ReviewViewSet(viewsets.ModelViewSet):
     http_method_names = ['get', 'post', 'patch', 'delete']
 
     def get_queryset(self):
-        return self.__get_request_title().reviews.all()
+        return self.__get_request_title().reviews.select_related(
+            'author'
+        ).all()
 
     def create(self, request, *args, **kwargs):
+        '''Без этого метода обойтись не могу.
+        Проверяю, чтобы к произведению был оставлен только один отзыв автора'''
         try:
             _ = request.user.reviews.get(
                 title=self.__get_request_title()
@@ -84,7 +89,12 @@ class ReviewViewSet(viewsets.ModelViewSet):
 
 
 class TitleViewSet(viewsets.ModelViewSet):
-    queryset = Title.objects.all()
+    queryset = Title.objects.annotate(
+        rating=Avg('reviews__score')
+    ).prefetch_related(
+        Prefetch('genre', queryset=Genre.objects.all())
+    ).select_related('category')
+
     serializer_class = TitleGetSerializer
     permission_classes = [IsAdminOrReadOnly]
     filterset_class = TitleFilter
@@ -96,12 +106,16 @@ class TitleViewSet(viewsets.ModelViewSet):
         return TitlePostSerializer
 
 
-class GenreViewSet(
+class CreateDestroyListMixin(
     viewsets.mixins.CreateModelMixin,
     viewsets.mixins.DestroyModelMixin,
     viewsets.mixins.ListModelMixin,
     viewsets.GenericViewSet
 ):
+    pass
+
+
+class GenreViewSet(CreateDestroyListMixin):
     queryset = Genre.objects.all()
     serializer_class = GenreSerializer
     permission_classes = [IsAdminOrReadOnly]
@@ -110,12 +124,7 @@ class GenreViewSet(
     search_fields = ['name']
 
 
-class CategoryViewSet(
-    viewsets.mixins.CreateModelMixin,
-    viewsets.mixins.DestroyModelMixin,
-    viewsets.mixins.ListModelMixin,
-    viewsets.GenericViewSet
-):
+class CategoryViewSet(CreateDestroyListMixin):
     queryset = Category.objects.all()
     serializer_class = CategorySerializer
     permission_classes = [IsAdminOrReadOnly]
@@ -136,42 +145,37 @@ class SignUpView(APIView):
         username = serializer.validated_data.get('username')
         email = serializer.validated_data.get('email')
 
-        if (
-            User.objects.filter(email=email)
-            .exclude(username=username).exists()
-        ):
+        existing_user_with_email = User.objects.filter(
+            email=email).exclude(username=username).first()
+        if existing_user_with_email:
             return Response(
                 {'email': 'Этот email уже используется'},
                 status=status.HTTP_400_BAD_REQUEST
             )
-
-        if (
-            User.objects.filter(username=username)
-            .exclude(email=email).exists()
-        ):
+        existing_user_with_username = User.objects.filter(
+            username=username).exclude(email=email).first()
+        if existing_user_with_username:
             return Response(
                 {'email': 'Этот username уже используется'},
                 status=status.HTTP_400_BAD_REQUEST
             )
 
-        code = secrets.token_urlsafe(16)
-
-        if User.objects.filter(username=username, email=email).exists():
-            user = User.objects.get(username=username)
-            user.confirmation_code = code
-            user.save()
+        existing_user = User.objects.filter(
+            username=username, email=email).first()
+        if existing_user:
+            code = default_token_generator.make_token(existing_user)
             self.send_confirmation_code(
-                user.email, user.confirmation_code, user.username)
+                existing_user.email, code, existing_user.username)
             return Response(
                 {'username': username, 'email': email},
                 status=status.HTTP_200_OK
             )
 
-        user = User.objects.create(
+        user = User.objects.create_user(
             username=username,
-            email=email,
-            confirmation_code=code
+            email=email
         )
+        code = default_token_generator.make_token(user)
         self.send_confirmation_code(email, code, username)
 
         return Response({'username': username, 'email': email},
@@ -181,7 +185,7 @@ class SignUpView(APIView):
         send_mail(
             subject='Ваш код подтверждения',
             message=f'Здравствуйте, {username}! Ваш код подтверждения: {code}',
-            from_email=settings.DEFAULT_FROM_EMAIL,
+            from_email=None,
             recipient_list=[email],
             fail_silently=False,
         )
