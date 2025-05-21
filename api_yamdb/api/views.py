@@ -1,7 +1,5 @@
-import secrets
-
-from django.conf import settings
 from django.contrib.auth import get_user_model
+from django.contrib.auth.tokens import default_token_generator
 from django.core.mail import send_mail
 from django.shortcuts import get_object_or_404
 from rest_framework import status, viewsets, filters
@@ -12,6 +10,7 @@ from rest_framework.permissions import (
     AllowAny, IsAuthenticated, IsAuthenticatedOrReadOnly
 )
 from rest_framework_simplejwt.tokens import AccessToken
+
 from .filters import TitleFilter
 from .permissions import AdminOnly, IsAdminOrReadOnly, IsAuthorOrReadOnly
 from .serializers import (
@@ -151,16 +150,12 @@ class SignUpView(APIView):
                 status=status.HTTP_400_BAD_REQUEST
             )
 
-        code = secrets.token_urlsafe(16)
-
         existing_user = User.objects.filter(
             username=username, email=email).first()
         if existing_user:
-            user = User.objects.get(username=username)
-            user.confirmation_code = code
-            user.save()
+            code = default_token_generator.make_token(existing_user)
             self.send_confirmation_code(
-                user.email, user.confirmation_code, user.username)
+                existing_user.email, code, existing_user.username)
             return Response(
                 {'username': username, 'email': email},
                 status=status.HTTP_200_OK
@@ -168,9 +163,9 @@ class SignUpView(APIView):
 
         user = User.objects.create_user(
             username=username,
-            email=email,
-            confirmation_code=code
+            email=email
         )
+        code = default_token_generator.make_token(user)
         self.send_confirmation_code(email, code, username)
 
         return Response({'username': username, 'email': email},
