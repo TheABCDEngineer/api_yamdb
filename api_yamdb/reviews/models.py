@@ -100,6 +100,8 @@ class Review(models.Model):
                 name='only_one_review_to_title'
             )
         ]
+        verbose_name = 'Ревью'
+        verbose_name_plural = 'Ревью'
 
 
 class Comment(models.Model):
@@ -118,3 +120,7 @@ class Comment(models.Model):
         verbose_name='Дата публикации',
         auto_now_add=True
     )
+    
+    class Meta:
+        verbose_name = 'Комментарий'
+        verbose_name_plural = 'Комментарии'
