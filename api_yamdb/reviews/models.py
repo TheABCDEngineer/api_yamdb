@@ -120,7 +120,7 @@ class Comment(models.Model):
         verbose_name='Дата публикации',
         auto_now_add=True
     )
-    
+
     class Meta:
         verbose_name = 'Комментарий'
         verbose_name_plural = 'Комментарии'
