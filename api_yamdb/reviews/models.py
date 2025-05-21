@@ -57,7 +57,6 @@ class Title(models.Model):
         Genre,
         related_name='titles',
         verbose_name='Жанр произведения'
-
     )
     category = models.ForeignKey(
         Category,

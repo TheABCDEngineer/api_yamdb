@@ -100,6 +100,8 @@ STATICFILES_DIRS = ((BASE_DIR / 'static/'),)
 
 EMAIL_BACKEND = 'django.core.mail.backends.filebased.EmailBackend'
 
+DEFAULT_FROM_EMAIL = 'automessage@yambd.com'
+
 EMAIL_FILE_PATH = BASE_DIR / 'sent_emails'
 
 # там, где пост запросы к аутентификации добавить allowAny
