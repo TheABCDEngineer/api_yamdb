@@ -1,7 +1,8 @@
-from django.core.management.base import BaseCommand
 import csv
 import os
+
 from django.conf import settings
+from django.core.management.base import BaseCommand
 from reviews.models import Category, Genre, Title
 
 
@@ -11,7 +12,11 @@ class Command(BaseCommand):
     def handle(self, *args, **kwargs):
         data_dir = os.path.join(settings.BASE_DIR, 'static', 'data')
 
-        with open(os.path.join(data_dir, 'category.csv'), encoding='utf-8') as f:
+        with open(
+            os.path.join(
+                data_dir,
+                'category.csv'
+                ), encoding='utf-8') as f:
             reader = csv.DictReader(f)
             for row in reader:
                 Category.objects.update_or_create(
@@ -30,7 +35,9 @@ class Command(BaseCommand):
         with open(os.path.join(data_dir, 'titles.csv'), encoding='utf-8') as f:
             reader = csv.DictReader(f)
             for row in reader:
-                category = Category.objects.filter(id=int(row['category'])).first()
+                category = Category.objects.filter(
+                    id=int(row['category'])
+                ).first()
                 Title.objects.update_or_create(
                     id=int(row['id']),
                     defaults={
@@ -41,7 +48,9 @@ class Command(BaseCommand):
                     }
                 )
 
-        with open(os.path.join(data_dir, 'genre_title.csv'), encoding='utf-8') as f:
+        with open(
+            os.path.join(data_dir, 'genre_title.csv'), encoding='utf-8'
+        ) as f:
             reader = csv.DictReader(f)
             for row in reader:
                 title = Title.objects.filter(id=int(row['title_id'])).first()

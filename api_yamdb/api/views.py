@@ -1,25 +1,24 @@
 from django.contrib.auth import get_user_model
 from django.contrib.auth.tokens import default_token_generator
 from django.core.mail import send_mail
+from django.db.models import Avg, Prefetch
 from django.shortcuts import get_object_or_404
-from rest_framework import status, viewsets, filters
+from rest_framework import filters, status, viewsets
 from rest_framework.decorators import action
-from rest_framework.views import APIView
+from rest_framework.permissions import (AllowAny, IsAuthenticated,
+                                        IsAuthenticatedOrReadOnly)
 from rest_framework.response import Response
-from rest_framework.permissions import (
-    AllowAny, IsAuthenticated, IsAuthenticatedOrReadOnly
-)
+from rest_framework.views import APIView
 from rest_framework_simplejwt.tokens import AccessToken
 
 from .filters import TitleFilter
 from .permissions import AdminOnly, IsAdminOrReadOnly, IsAuthorOrReadOnly
-from .serializers import (
-    CategorySerializer, CommentSerializer, GenreSerializer, ReviewSerializer,
-    TitleGetSerializer, TitlePostSerializer, TokenSerializer, UserSerializer,
-    UserMeSerializer, UsernameEmailSreializer
-)
+from .serializers import (CategorySerializer, CommentSerializer,
+                          GenreSerializer, ReviewSerializer,
+                          TitleGetSerializer, TitlePostSerializer,
+                          TokenSerializer, UserMeSerializer,
+                          UsernameEmailSreializer, UserSerializer)
 from reviews.models import Category, Genre, Review, Title
-
 
 User = get_user_model()
 
@@ -30,7 +29,9 @@ class CommentViewSet(viewsets.ModelViewSet):
     http_method_names = ['get', 'post', 'patch', 'delete']
 
     def get_queryset(self):
-        return self.__get_request_review().comments.all()
+        return self.__get_request_review().comments.select_related(
+            'author'
+        ).all()
 
     def perform_create(self, serializer):
         serializer.save(
@@ -55,7 +56,9 @@ class ReviewViewSet(viewsets.ModelViewSet):
     http_method_names = ['get', 'post', 'patch', 'delete']
 
     def get_queryset(self):
-        return self.__get_request_title().reviews.all()
+        return self.__get_request_title().reviews.select_related(
+            'author'
+        ).all()
 
     def create(self, request, *args, **kwargs):
         try:
@@ -83,7 +86,12 @@ class ReviewViewSet(viewsets.ModelViewSet):
 
 
 class TitleViewSet(viewsets.ModelViewSet):
-    queryset = Title.objects.all()
+    queryset = Title.objects.annotate(
+        rating=Avg('reviews__score')
+    ).prefetch_related(
+        Prefetch('genre', queryset=Genre.objects.all())
+    ).select_related('category')
+
     serializer_class = TitleGetSerializer
     permission_classes = [IsAdminOrReadOnly]
     filterset_class = TitleFilter

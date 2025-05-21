@@ -47,18 +47,24 @@ class Genre(models.Model):
 
 class Title(models.Model):
     name = models.CharField(max_length=256)
-    year = models.PositiveSmallIntegerField()
-    description = models.TextField(blank=True, null=True)
+    year = models.PositiveSmallIntegerField(verbose_name='Год выпуска')
+    description = models.TextField(
+        blank=True,
+        null=True,
+        verbose_name='Описание'
+    )
     genre = models.ManyToManyField(
         Genre,
         related_name='titles',
+        verbose_name='Жанр произведения'
     )
     category = models.ForeignKey(
         Category,
         on_delete=models.CASCADE,
         related_name='titles',
         blank=False,
-        null=True
+        null=True,
+        verbose_name='Категория произведения'
     )
 
     class Meta:
@@ -74,23 +80,25 @@ class Review(models.Model):
     author = models.ForeignKey(
         User,
         on_delete=models.CASCADE,
-        related_name='reviews'
+        related_name='reviews',
+        verbose_name='Автор ревью'
     )
     title = models.ForeignKey(
         Title,
         on_delete=models.CASCADE,
-        related_name='reviews'
+        related_name='reviews',
+        verbose_name='Ревью на произведение'
     )
     score = models.PositiveSmallIntegerField(
         verbose_name='Оценка',
         validators=[
             MinValueValidator(MIN_SCORE),
             MaxValueValidator(MAX_SCORE)
-        ]
+        ],
     )
     pub_date = models.DateTimeField(
         verbose_name='Дата публикации',
-        auto_now_add=True
+        auto_now_add=True,
     )
 
     class Meta:
@@ -109,16 +117,18 @@ class Comment(models.Model):
     author = models.ForeignKey(
         User,
         on_delete=models.CASCADE,
-        related_name='comments'
+        related_name='comments',
+        verbose_name='Автор комментария'
     )
     review = models.ForeignKey(
         Review,
         on_delete=models.CASCADE,
-        related_name='comments'
+        related_name='comments',
+        verbose_name='Коментарий к ревью'
     )
     pub_date = models.DateTimeField(
         verbose_name='Дата публикации',
-        auto_now_add=True
+        auto_now_add=True,
     )
 
     class Meta:
