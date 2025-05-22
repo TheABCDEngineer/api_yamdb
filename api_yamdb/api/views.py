@@ -5,21 +5,21 @@ from django.db.models import Avg, Prefetch
 from django.shortcuts import get_object_or_404
 from rest_framework import filters, status, viewsets
 from rest_framework.decorators import action
-from rest_framework.permissions import (
-    AllowAny, IsAuthenticated, IsAuthenticatedOrReadOnly
-)
+from rest_framework.permissions import (AllowAny, IsAuthenticated,
+                                        IsAuthenticatedOrReadOnly)
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework_simplejwt.tokens import AccessToken
 
+from reviews.models import Category, Genre, Review, Title
 from .filters import TitleFilter
 from .permissions import AdminOnly, IsAdminOrReadOnly, IsAuthorOrReadOnly
-from .serializers import (
-    CategorySerializer, CommentSerializer, GenreSerializer, ReviewSerializer,
-    TitleGetSerializer, TitlePostSerializer, TokenSerializer, UserMeSerializer,
-    UsernameEmailSreializer, UserSerializer
-)
-from reviews.models import Category, Genre, Review, Title
+from .serializers import (CategorySerializer, CommentSerializer,
+                          GenreSerializer, ReviewSerializer,
+                          TitleGetSerializer, TitlePostSerializer,
+                          TokenSerializer, UserMeSerializer,
+                          UsernameEmailSreializer, UserSerializer)
+
 
 User = get_user_model()
 
@@ -62,18 +62,14 @@ class ReviewViewSet(viewsets.ModelViewSet):
         ).all()
 
     def create(self, request, *args, **kwargs):
-        '''Без этого метода обойтись не могу.
-        Проверяю, чтобы к произведению был оставлен только один отзыв автора'''
-        try:
-            _ = request.user.reviews.get(
-                title=self.__get_request_title()
-            )
+        if request.user.reviews.filter(
+            title=self.__get_request_title()
+        ).exists():
             return Response(
                 'Нельзя оставить более одного отзыва на произведение',
                 status=status.HTTP_400_BAD_REQUEST
             )
-        except Review.DoesNotExist:
-            return super().create(request, *args, **kwargs)
+        return super().create(request, *args, **kwargs)
 
     def perform_create(self, serializer):
         serializer.save(
@@ -88,12 +84,10 @@ class ReviewViewSet(viewsets.ModelViewSet):
         )
 
 
-class TitleViewSet(viewsets.ModelViewSet):
+class TitleViewSet(viewsets.ModelViewSet): 
     queryset = Title.objects.annotate(
         rating=Avg('reviews__score')
-    ).prefetch_related(
-        Prefetch('genre', queryset=Genre.objects.all())
-    ).select_related('category')
+    ).select_related('category').prefetch_related('genre')
 
     serializer_class = TitleGetSerializer
     permission_classes = [IsAdminOrReadOnly]

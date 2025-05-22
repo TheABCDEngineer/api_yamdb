@@ -114,13 +114,12 @@ class UsernameEmailSreializer(serializers.Serializer):
         max_length=150,
         required=True,
     )
+    email = serializers.EmailField(required=True, max_length=254)
 
     def validate_username(self, value):
         if value == 'me':
             raise ValidationError('Использовать имя me запрещено.')
         return value
-
-    email = serializers.EmailField(required=True, max_length=254)
 
 
 class UserSerializer(serializers.ModelSerializer):
