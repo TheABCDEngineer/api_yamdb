@@ -5,7 +5,6 @@ from django.utils import timezone
 from rest_framework import serializers
 from rest_framework.exceptions import ValidationError
 from rest_framework.validators import UniqueValidator
-
 from reviews.models import Category, Comment, Genre, Review, Title
 
 User = get_user_model()
@@ -114,13 +113,12 @@ class UsernameEmailSreializer(serializers.Serializer):
         max_length=150,
         required=True,
     )
+    email = serializers.EmailField(required=True, max_length=254)
 
     def validate_username(self, value):
         if value == 'me':
             raise ValidationError('Использовать имя me запрещено.')
         return value
-
-    email = serializers.EmailField(required=True, max_length=254)
 
 
 class UserSerializer(serializers.ModelSerializer):
