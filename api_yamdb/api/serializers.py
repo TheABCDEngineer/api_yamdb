@@ -1,4 +1,5 @@
 from django.contrib.auth import get_user_model
+from django.contrib.auth.tokens import default_token_generator
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
 from rest_framework import serializers
@@ -142,7 +143,6 @@ class ReviewSerializer(serializers.ModelSerializer):
 
 
 class UsernameEmailSreializer(serializers.Serializer):
-    """Сериализатор для username."""
 
     username = serializers.RegexField(
         regex=r'^[\w.@+-]+$',
@@ -159,7 +159,7 @@ class UsernameEmailSreializer(serializers.Serializer):
 
 
 class UserSerializer(serializers.ModelSerializer):
-    """Сериализатор для логики /users/."""
+    """Сериализатор для логики энжпоинта /users/."""
 
     username = serializers.RegexField(
         regex=r'^[\w.@+-]+$',
@@ -211,7 +211,8 @@ class TokenSerializer(serializers.Serializer):
 
     def validate(self, data):
         user = get_object_or_404(User, username=data.get('username'))
+        confirmation_code = data.get('confirmation_code')
         data['user'] = user
-        if user.confirmation_code == data.get('confirmation_code'):
+        if default_token_generator.check_token(user, confirmation_code):
             return data
         raise serializers.ValidationError('Неверный код подтверждения.')

@@ -50,14 +50,12 @@ class Title(models.Model):
     year = models.PositiveSmallIntegerField(verbose_name='Год выпуска')
     description = models.TextField(
         blank=True,
-        null=True,
         verbose_name='Описание'
     )
     genre = models.ManyToManyField(
         Genre,
         related_name='titles',
         verbose_name='Жанр произведения'
-
     )
     category = models.ForeignKey(
         Category,
@@ -77,7 +75,7 @@ class Title(models.Model):
 
 
 class Review(models.Model):
-    text = models.TextField()
+    text = models.TextField(verbose_name='Текст ревью')
     author = models.ForeignKey(
         User,
         on_delete=models.CASCADE,

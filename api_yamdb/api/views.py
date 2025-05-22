@@ -1,7 +1,5 @@
-import secrets
-
-from django.conf import settings
 from django.contrib.auth import get_user_model
+from django.contrib.auth.tokens import default_token_generator
 from django.core.mail import send_mail
 from django.db.models import Avg, Prefetch
 from django.shortcuts import get_object_or_404
@@ -21,6 +19,7 @@ from .serializers import (CategorySerializer, CommentSerializer,
                           TitleGetSerializer, TitlePostSerializer,
                           TokenSerializer, UserMeSerializer,
                           UsernameEmailSreializer, UserSerializer)
+
 
 User = get_user_model()
 
@@ -87,12 +86,10 @@ class ReviewViewSet(viewsets.ModelViewSet):
         )
 
 
-class TitleViewSet(viewsets.ModelViewSet):
+class TitleViewSet(viewsets.ModelViewSet): 
     queryset = Title.objects.annotate(
         rating=Avg('reviews__score')
-    ).prefetch_related(
-        Prefetch('genre', queryset=Genre.objects.all())
-    ).select_related('category')
+    ).select_related('category').prefetch_related('genre')
 
     serializer_class = TitleGetSerializer
     permission_classes = [IsAdminOrReadOnly]
@@ -145,42 +142,37 @@ class SignUpView(APIView):
         username = serializer.validated_data.get('username')
         email = serializer.validated_data.get('email')
 
-        if (
-            User.objects.filter(email=email)
-            .exclude(username=username).exists()
-        ):
+        existing_user_with_email = User.objects.filter(
+            email=email).exclude(username=username).first()
+        if existing_user_with_email:
             return Response(
                 {'email': 'Этот email уже используется'},
                 status=status.HTTP_400_BAD_REQUEST
             )
-
-        if (
-            User.objects.filter(username=username)
-            .exclude(email=email).exists()
-        ):
+        existing_user_with_username = User.objects.filter(
+            username=username).exclude(email=email).first()
+        if existing_user_with_username:
             return Response(
                 {'email': 'Этот username уже используется'},
                 status=status.HTTP_400_BAD_REQUEST
             )
 
-        code = secrets.token_urlsafe(16)
-
-        if User.objects.filter(username=username, email=email).exists():
-            user = User.objects.get(username=username)
-            user.confirmation_code = code
-            user.save()
+        existing_user = User.objects.filter(
+            username=username, email=email).first()
+        if existing_user:
+            code = default_token_generator.make_token(existing_user)
             self.send_confirmation_code(
-                user.email, user.confirmation_code, user.username)
+                existing_user.email, code, existing_user.username)
             return Response(
                 {'username': username, 'email': email},
                 status=status.HTTP_200_OK
             )
 
-        user = User.objects.create(
+        user = User.objects.create_user(
             username=username,
-            email=email,
-            confirmation_code=code
+            email=email
         )
+        code = default_token_generator.make_token(user)
         self.send_confirmation_code(email, code, username)
 
         return Response({'username': username, 'email': email},
@@ -190,7 +182,7 @@ class SignUpView(APIView):
         send_mail(
             subject='Ваш код подтверждения',
             message=f'Здравствуйте, {username}! Ваш код подтверждения: {code}',
-            from_email=settings.DEFAULT_FROM_EMAIL,
+            from_email=None,
             recipient_list=[email],
             fail_silently=False,
         )
