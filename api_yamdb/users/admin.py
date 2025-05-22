@@ -4,9 +4,11 @@ from django.contrib.auth.admin import UserAdmin as BaseAdmin
 
 from .forms import CustomUserChangeForm, CustomUserCreationForm
 
+
 User = get_user_model()
 
 
+@admin.register(User)
 class UserAdmin(BaseAdmin):
     add_form = CustomUserCreationForm
     form = CustomUserChangeForm
@@ -20,6 +22,4 @@ class UserAdmin(BaseAdmin):
         'role',
     )
     list_editable = ('role',)
-
-
-admin.site.register(User, UserAdmin)
+    search_fields = ('username', 'email', 'first_name', 'last_name')

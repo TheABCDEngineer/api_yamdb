@@ -5,30 +5,15 @@ from django.utils import timezone
 from rest_framework import serializers
 from rest_framework.exceptions import ValidationError
 from rest_framework.validators import UniqueValidator
-
-from api.constants import MAX_SCORE, MIN_SCORE, VALIDATE_LENGTH_TITLE
 from reviews.models import Category, Comment, Genre, Review, Title
 
 User = get_user_model()
 
 
 class CategorySerializer(serializers.ModelSerializer):
-    slug = serializers.RegexField(
-        regex=r'^[-a-zA-Z0-9_]+$',
-        max_length=50,
-        required=True
-    )
-
     class Meta:
         model = Category
         fields = ('name', 'slug')
-
-    def validate_slug(self, value):
-        if Category.objects.filter(slug=value).first():
-            raise serializers.ValidationError(
-                f'Категория с slug "{value}" уже существует.'
-            )
-        return value
 
 
 class GenreSerializer(serializers.ModelSerializer):
@@ -36,18 +21,11 @@ class GenreSerializer(serializers.ModelSerializer):
         model = Genre
         fields = ('name', 'slug')
 
-    def validate_slug(self, value):
-        if Genre.objects.filter(slug=value).first():
-            raise serializers.ValidationError(
-                f'Жанр с slug "{value}" уже существует.'
-            )
-        return value
-
 
 class TitleGetSerializer(serializers.ModelSerializer):
     genre = GenreSerializer(many=True, read_only=True)
     category = CategorySerializer(read_only=True)
-    rating = serializers.FloatField(read_only=True)
+    rating = serializers.IntegerField(read_only=True)
 
     class Meta:
         model = Title
@@ -82,13 +60,6 @@ class TitlePostSerializer(serializers.ModelSerializer):
             )
         return value
 
-    def validate_name(self, value):
-        if len(value) > VALIDATE_LENGTH_TITLE:
-            raise serializers.ValidationError(
-                'Длина названия не должна превышать 256 символов.'
-            )
-        return value
-
 
 class CommentSerializer(serializers.ModelSerializer):
     author = serializers.SlugRelatedField(
@@ -118,13 +89,6 @@ class ReviewSerializer(serializers.ModelSerializer):
         read_only=True
     )
 
-    def validate_score(self, value):
-        if MIN_SCORE <= value <= MAX_SCORE:
-            return value
-        raise serializers.ValidationError(
-            'Значение score должно быть в диапазоне от 0 до 10'
-        )
-
     class Meta:
         model = Review
         fields = (
@@ -149,13 +113,12 @@ class UsernameEmailSreializer(serializers.Serializer):
         max_length=150,
         required=True,
     )
+    email = serializers.EmailField(required=True, max_length=254)
 
     def validate_username(self, value):
         if value == 'me':
             raise ValidationError('Использовать имя me запрещено.')
         return value
-
-    email = serializers.EmailField(required=True, max_length=254)
 
 
 class UserSerializer(serializers.ModelSerializer):

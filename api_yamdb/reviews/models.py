@@ -1,15 +1,16 @@
 from django.contrib.auth import get_user_model
 from django.core.validators import MaxValueValidator, MinValueValidator
 from django.db import models
+from django.utils import timezone
 
-from api.constants import MAX_SCORE, MIN_SCORE
+from api.constants import MAX_SCORE, MIN_SCORE, TITLE_LENGTH
 
 User = get_user_model()
 
 
 class Category(models.Model):
     name = models.CharField(
-        max_length=256,
+        max_length=TITLE_LENGTH,
         verbose_name='Название категории'
     )
     slug = models.SlugField(
@@ -28,7 +29,7 @@ class Category(models.Model):
 
 class Genre(models.Model):
     name = models.CharField(
-        max_length=256,
+        max_length=TITLE_LENGTH,
         verbose_name='Название жанра'
     )
     slug = models.SlugField(
@@ -46,8 +47,16 @@ class Genre(models.Model):
 
 
 class Title(models.Model):
-    name = models.CharField(max_length=256)
-    year = models.PositiveSmallIntegerField(verbose_name='Год выпуска')
+    name = models.CharField(
+        max_length=TITLE_LENGTH,
+        verbose_name='Название произведения'
+    )
+    year = models.PositiveSmallIntegerField(
+        verbose_name='Год выпуска',
+        validators=[
+            MaxValueValidator(timezone.now().year)
+        ],
+    )
     description = models.TextField(
         blank=True,
         verbose_name='Описание'
@@ -110,6 +119,9 @@ class Review(models.Model):
         verbose_name = 'Ревью'
         verbose_name_plural = 'Ревью'
 
+    def __str__(self):
+        return f'Ревью автора {self.author} к произведению {self.title}'
+
 
 class Comment(models.Model):
     text = models.TextField()
@@ -133,3 +145,6 @@ class Comment(models.Model):
     class Meta:
         verbose_name = 'Комментарий'
         verbose_name_plural = 'Комментарии'
+
+    def __str__(self):
+        return f'Коментарий к {self.review}'
