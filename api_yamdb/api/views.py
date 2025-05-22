@@ -10,7 +10,6 @@ from rest_framework.permissions import (AllowAny, IsAuthenticated,
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework_simplejwt.tokens import AccessToken
-from reviews.models import Category, Genre, Review, Title
 
 from reviews.models import Category, Genre, Review, Title
 from .filters import TitleFilter
@@ -63,18 +62,14 @@ class ReviewViewSet(viewsets.ModelViewSet):
         ).all()
 
     def create(self, request, *args, **kwargs):
-        """Без этого метода обойтись не могу.
-        Проверяю, чтобы к произведению был оставлен только один отзыв автора"""
-        try:
-            _ = request.user.reviews.get(
-                title=self.__get_request_title()
-            )
+        if request.user.reviews.filter(
+            title=self.__get_request_title()
+        ).exists():
             return Response(
                 'Нельзя оставить более одного отзыва на произведение',
                 status=status.HTTP_400_BAD_REQUEST
             )
-        except Review.DoesNotExist:
-            return super().create(request, *args, **kwargs)
+        return super().create(request, *args, **kwargs)
 
     def perform_create(self, serializer):
         serializer.save(
