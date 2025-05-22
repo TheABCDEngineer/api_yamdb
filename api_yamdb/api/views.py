@@ -12,6 +12,7 @@ from rest_framework.views import APIView
 from rest_framework_simplejwt.tokens import AccessToken
 from reviews.models import Category, Genre, Review, Title
 
+from reviews.models import Category, Genre, Review, Title
 from .filters import TitleFilter
 from .permissions import AdminOnly, IsAdminOrReadOnly, IsAuthorOrReadOnly
 from .serializers import (CategorySerializer, CommentSerializer,
@@ -19,6 +20,7 @@ from .serializers import (CategorySerializer, CommentSerializer,
                           TitleGetSerializer, TitlePostSerializer,
                           TokenSerializer, UserMeSerializer,
                           UsernameEmailSreializer, UserSerializer)
+
 
 User = get_user_model()
 
@@ -87,12 +89,10 @@ class ReviewViewSet(viewsets.ModelViewSet):
         )
 
 
-class TitleViewSet(viewsets.ModelViewSet):
+class TitleViewSet(viewsets.ModelViewSet): 
     queryset = Title.objects.annotate(
         rating=Avg('reviews__score')
-    ).prefetch_related(
-        Prefetch('genre', queryset=Genre.objects.all())
-    ).select_related('category')
+    ).select_related('category').prefetch_related('genre')
 
     serializer_class = TitleGetSerializer
     permission_classes = [IsAdminOrReadOnly]
