@@ -1,7 +1,7 @@
 from django.contrib.auth import get_user_model
 from django.contrib.auth.tokens import default_token_generator
 from django.core.mail import send_mail
-from django.db.models import Avg, Prefetch
+from django.db.models import Avg
 from django.shortcuts import get_object_or_404
 from rest_framework import filters, status, viewsets
 from rest_framework.decorators import action
@@ -84,7 +84,7 @@ class ReviewViewSet(viewsets.ModelViewSet):
         )
 
 
-class TitleViewSet(viewsets.ModelViewSet): 
+class TitleViewSet(viewsets.ModelViewSet):
     queryset = Title.objects.annotate(
         rating=Avg('reviews__score')
     ).select_related('category').prefetch_related('genre')
