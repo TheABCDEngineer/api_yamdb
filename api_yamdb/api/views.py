@@ -56,10 +56,14 @@ class CommentViewSet(viewsets.ModelViewSet):
         )
 
     def __get_request_review(self):
-        _ = get_object_or_404(
-            Title,
-            pk=self.kwargs['title_id']
-        )
+        title_id = self.kwargs['title_id']
+        if not Title.objects.filter(
+            id=title_id
+        ).exists():
+            return Response(
+                f'Произведения с id = {title_id} не существует',
+                status=status.HTTP_404_NOT_FOUND
+            )
         return get_object_or_404(
             Review,
             pk=self.kwargs['review_id']
