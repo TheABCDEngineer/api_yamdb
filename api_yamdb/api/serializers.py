@@ -159,7 +159,7 @@ class UserSerializer(serializers.ModelSerializer):
         if value == 'me':
             raise ValidationError('Использовать имя me запрещено.')
         return value
-  
+
 
 class UserMeSerializer(UserSerializer):
     """Сериализатор для логики эндпоинта /me/ ."""
