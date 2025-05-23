@@ -5,20 +5,35 @@ from django.db.models import Avg
 from django.shortcuts import get_object_or_404
 from rest_framework import filters, status, viewsets
 from rest_framework.decorators import action
-from rest_framework.permissions import (AllowAny, IsAuthenticated,
-                                        IsAuthenticatedOrReadOnly)
+from rest_framework.permissions import (
+    AllowAny,
+    IsAuthenticated,
+    IsAuthenticatedOrReadOnly
+)
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework_simplejwt.tokens import AccessToken
 
 from reviews.models import Category, Genre, Review, Title
+
 from .filters import TitleFilter
-from .permissions import AdminOnly, IsAdminOrReadOnly, IsAuthorOrReadOnly
-from .serializers import (CategorySerializer, CommentSerializer,
-                          GenreSerializer, ReviewSerializer,
-                          TitleGetSerializer, TitlePostSerializer,
-                          TokenSerializer, UserMeSerializer,
-                          UsernameEmailSreializer, UserSerializer)
+from .permissions import (
+    AdminOnly,
+    IsAdminOrReadOnly,
+    IsAuthorOrReadOnly
+)
+from .serializers import (
+    CategorySerializer,
+    CommentSerializer,
+    GenreSerializer,
+    ReviewSerializer,
+    TitleGetSerializer,
+    TitlePostSerializer,
+    TokenSerializer,
+    UserMeSerializer,
+    UsernameEmailSreializer,
+    UserSerializer
+)
 
 
 User = get_user_model()
@@ -41,10 +56,14 @@ class CommentViewSet(viewsets.ModelViewSet):
         )
 
     def __get_request_review(self):
-        _ = get_object_or_404(
-            Title,
-            pk=self.kwargs['title_id']
-        )
+        title_id = self.kwargs['title_id']
+        if not Title.objects.filter(
+            id=title_id
+        ).exists():
+            return Response(
+                f'Произведения с id = {title_id} не существует',
+                status=status.HTTP_404_NOT_FOUND
+            )
         return get_object_or_404(
             Review,
             pk=self.kwargs['review_id']

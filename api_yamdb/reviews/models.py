@@ -3,7 +3,7 @@ from django.core.validators import MaxValueValidator, MinValueValidator
 from django.db import models
 from django.utils import timezone
 
-from api.constants import MAX_SCORE, MIN_SCORE, TITLE_LENGTH
+from .constants import MAX_SCORE, MIN_SCORE, TITLE_LENGTH
 
 User = get_user_model()
 
@@ -124,7 +124,7 @@ class Review(models.Model):
 
 
 class Comment(models.Model):
-    text = models.TextField()
+    text = models.TextField(verbose_name='Текст комментария')
     author = models.ForeignKey(
         User,
         on_delete=models.CASCADE,
