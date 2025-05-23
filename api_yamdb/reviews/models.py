@@ -124,7 +124,7 @@ class Review(models.Model):
 
 
 class Comment(models.Model):
-    text = models.TextField()
+    text = models.TextField(verbose_name='Текст комментария')
     author = models.ForeignKey(
         User,
         on_delete=models.CASCADE,
