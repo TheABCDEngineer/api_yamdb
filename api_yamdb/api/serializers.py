@@ -148,11 +148,6 @@ class UserSerializer(serializers.ModelSerializer):
         ]
     )
 
-    def validate_username(self, value):
-        if value == 'me':
-            raise ValidationError('Использовать имя me запрещено.')
-        return value
-
     class Meta:
         model = User
         fields = [
@@ -160,6 +155,11 @@ class UserSerializer(serializers.ModelSerializer):
             'last_name', 'bio', 'role'
         ]
 
+    def validate_username(self, value):
+        if value == 'me':
+            raise ValidationError('Использовать имя me запрещено.')
+        return value
+  
 
 class UserMeSerializer(UserSerializer):
     """Сериализатор для логики эндпоинта /me/ ."""
