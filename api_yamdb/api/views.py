@@ -45,8 +45,9 @@ class CommentViewSet(viewsets.ModelViewSet):
     http_method_names = ['get', 'post', 'patch', 'delete']
 
     def get_queryset(self):
+        title_id = self.kwargs['title_id']
         if not Title.objects.filter(
-            id=self.kwargs['title_id']
+            id=title_id
         ).exists():
             return Response(
                 f'Произведения с id = {title_id} не существует',
