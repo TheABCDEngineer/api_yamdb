@@ -3,7 +3,7 @@ from django.core.validators import MaxValueValidator, MinValueValidator
 from django.db import models
 from django.utils import timezone
 
-from api.constants import MAX_SCORE, MIN_SCORE, TITLE_LENGTH
+from .constants import MAX_SCORE, MIN_SCORE, TITLE_LENGTH
 
 User = get_user_model()
 
